@@ -1,18 +1,9 @@
-# Hello, world!
-#
-# This is an example function named 'hello' 
-# which prints 'Hello, world!'.
-#
-# You can learn more about package authoring with RStudio at:
-#
-#   https://r-pkgs.org
-#
-# Some useful keyboard shortcuts for package authoring:
-#
-#   Install Package:           'Cmd + Shift + B'
-#   Check Package:             'Cmd + Shift + E'
-#   Test Package:              'Cmd + Shift + T'
+library(httr)
+library(jsonlite)
 
-hello <- function() {
-  print("Hello, world!")
-}
+API_KEY <- ""
+
+res <- httr::GET("https://api.gofigr.io/api/v1.2/user/",
+                 add_headers(Authorization = paste0('Token ', API_KEY)))
+data <- fromJSON(rawToChar(res$content))
+print(data)
