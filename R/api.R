@@ -1,7 +1,3 @@
-library(httr)
-library(jsonlite)
-library(knitr)
-
 API_URL = "https://api.gofigr.io"
 API_VERSION = "v1.2"
 
@@ -32,7 +28,7 @@ read.config <- function(path=CONFIG_PATH) {
   }
 
   tryCatch({
-    data <- fromJSON(file(path))
+    data <- jsonlite::fromJSON(file(path))
 
     # Prioritize environment variables
     data$username <- Sys.getenv("GF_USERNAME", unset=default.if.null(data$username, ""))
@@ -119,7 +115,7 @@ gofigr.client <- function(username=NULL, password=NULL, api_key=NULL,
 #'
 #' @return NA
 #' @export
-print.gofigr <- function(gf) {
+print.gofigr <- function(gf, ...) {
   cat(paste0("GoFigr client at ", gf$url, "\n"))
 }
 
@@ -151,13 +147,13 @@ authenticate_jwt <- function(gf) {
                     body=jsonlite::toJSON(list(username=gf$username,
                                                password=gf$password),
                                           auto_unbox=TRUE),
-                    content_type_json())
+                    httr::content_type_json())
 
   if(res$status_code != 200) {
     stop("Authentication failed")
   }
 
-  res_data <- fromJSON(rawToChar(res$content))
+  res_data <- jsonlite::fromJSON(rawToChar(res$content))
 
   gf$access_token <- res_data$access
   gf$refresh_token <- res_data$refresh
@@ -178,10 +174,10 @@ refresh_jwt <- function(gf) {
   res <- httr::POST(paste0(gf$jwt_url, "refresh/"),
                     body=jsonlite::toJSON(list(refresh=gf$refresh_token),
                                           auto_unbox=TRUE),
-                    content_type_json())
+                    httr::content_type_json())
 
   if(res$status_code == 200) {
-    res_data <- fromJSON(rawToChar(res$content))
+    res_data <- jsonlite::fromJSON(rawToChar(res$content))
     gf$access_token <- res_data$access
 
     gofigr.cat(gf, "JWT refresh successful")
@@ -202,7 +198,7 @@ is.expired.token <- function(res) {
   }
 
   tryCatch({
-    obj <- fromJSON(rawToChar(res$content))
+    obj <- jsonlite::fromJSON(rawToChar(res$content))
     return(obj$code == "token_not_valid")
   })
 
@@ -215,10 +211,10 @@ is.expired.token <- function(res) {
 #'
 #' @return parsed JSON
 responseJSON <- function(response) {
-  return(fromJSON(rawToChar(response$content),
-                  simplifyDataFrame = FALSE,
-                  simplifyMatrix = FALSE,
-                  simplifyVector = FALSE))
+  return(jsonlite::fromJSON(rawToChar(response$content),
+                            simplifyDataFrame = FALSE,
+                            simplifyMatrix = FALSE,
+                            simplifyVector = FALSE))
 }
 
 #' Wraps an HTTR method e.g. GET to provide relative URL resolution and
@@ -249,7 +245,7 @@ gofigr.make_handler <- function(name, method) {
     } else if(!is.null(gf$api_key)) {
       # API key auth
       res <- method(full_url,
-                    add_headers(Authorization = paste0('Token ', gf$api_key)),
+                    httr::add_headers(Authorization = paste0('Token ', gf$api_key)),
                     ...)
     } else {
       # JWT
@@ -261,7 +257,7 @@ gofigr.make_handler <- function(name, method) {
 
       # Try the access token
       res <- method(full_url,
-                    add_headers(Authorization = paste0('Bearer ', gf$access_token)),
+                    httr::add_headers(Authorization = paste0('Bearer ', gf$access_token)),
                     ...)
 
       if(is.expired.token(res)) {  # Token expired?
@@ -269,7 +265,7 @@ gofigr.make_handler <- function(name, method) {
         refresh_jwt(gf)
 
         res <- method(full_url,
-                      add_headers(Authorization = paste0('Bearer ', gf$access_token)),
+                      httr::add_headers(Authorization = paste0('Bearer ', gf$access_token)),
                       ...)
       }
 
@@ -359,13 +355,10 @@ user.info <- function(gf) {
 #'
 #' @return response JSON. The "token" property will contain the API key if successful.
 #' @export
-#'
-#' @examples
-#' create.api.key(gofigr.client(), "John's laptop")
 create.api.key <- function(gf, name) {
   responseJSON(gofigr.POST(gf, "api_key/",
                            body=jsonlite::toJSON(list(name=name),
                                                  auto_unbox=TRUE),
-                           content_type_json(),
+                           httr::content_type_json(),
                            expected_status_code = 201))
 }
