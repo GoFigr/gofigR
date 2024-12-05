@@ -298,6 +298,9 @@ gofigr.POST <- gofigr.make_handler("POST", httr::POST)
 gofigr.PUT <- gofigr.make_handler("PUT", httr::PUT)
 
 #' @export
+gofigr.PATCH <- gofigr.make_handler("PATCH", httr::PATCH)
+
+#' @export
 gofigr.DELETE <- gofigr.make_handler("DELETE", httr::DELETE)
 
 
@@ -356,7 +359,7 @@ find.or.create <- function(gf, name, get.list, do.create, create=FALSE, type="ob
   }
 
   if(length(matches) == 1) {
-    return(matches[1])
+    return(matches[[1]])
   } else if(length(matches) > 1) {
     stop(paste0("Multiple instances of ", type, " match the name \"", name, "\". Please use an API ID instead."))
   } else {
