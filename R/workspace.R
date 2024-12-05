@@ -1,0 +1,78 @@
+#' Retrieves workspace details.
+#'
+#' @param gf GoFigr client
+#' @param api_id API ID of the workspace
+#'
+#' @return workspace details
+#' @export
+#'
+#' @examples
+#' get.workspace("59da9bdb-2095-47a9-b414-c029f8a00e0e")
+get.workspace <- function(gf, api_id) {
+  response.to.JSON(gofigr.GET(gf, paste0("workspace/", api_id)))
+}
+
+#' List all workspaces available to the user.
+#'
+#' @param gf GoFigr client
+#'
+#' @return List of workspaces
+#' @export
+list.workspaces <- function(gf) {
+  response.to.JSON(gofigr.GET(gf, "workspace/"))
+}
+
+#' Creates a new workspace
+#'
+#' @param gf GoFigr client
+#' @param name workspace name
+#' @param description workspace description
+#'
+#' @return created workspace object
+#' @export
+create.workspace <- function(gf, name, description=NULL) {
+  response.to.JSON(gofigr.POST(gf, "workspace/",
+                               body=obj.to.JSON(list(name=name,
+                                                     description=null.to.empty(description))),
+                               httr::content_type_json(),
+                               expected_status_code = 201))
+}
+
+#' Finds a workspace by name, optionally creating it if doesn't exist
+#'
+#' @param gf GoFigr client
+#' @param name name of the workspace to find
+#' @param description workspace description if creating a new one
+#' @param create if TRUE and workspace is not found, it will be created
+#'
+#' @return workspace if found; throws an error if not.
+#' @export
+find.workspace <- function(gf, name, description=NULL, create=FALSE) {
+  find.or.create(gf, name, create=create,
+                 type="workspace",
+                 get.list=function() { list.workspaces(gf) },
+                 do.create=function() {
+                   create.workspace(gf, name, description)
+                 })
+}
+
+
+#' Returns the argument if a valid workspace is passed, or the default
+#' workspace from the GoFigr client otherwise. Throws an error if both
+#' are NULL.
+#'
+#' @param gf GoFigr client
+#' @param workspace workspace or NULL
+#'
+#' @return workspace object
+#' @export
+infer.workspace <- function(gf, workspace) {
+  if(!is.null(workspace)) {
+    return(workspace)
+  }
+  else if(!is.null(gf$workspace)) {
+    return(gf$workspace)
+  } else {
+    stop("Workspace not specified and no default workspace available.")
+  }
+}

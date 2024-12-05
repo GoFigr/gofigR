@@ -77,6 +77,8 @@ default.if.null <- function(x, default) {
 #' @param anonymous whether to login anonymously
 #' @param verbose set to TRUE to enable verbose output
 #' @param workspace default workspace (API ID)
+#' @param ignore.config if TRUE, will ignore environment variables and other
+#' external configuration
 #'
 #' @return configured GoFigr client which you can pass to other functions
 #' @export
@@ -87,10 +89,13 @@ default.if.null <- function(x, default) {
 #' gofigr.client(api_key="abcdef0123456789") # API key login
 gofigr.client <- function(username=NULL, password=NULL, api_key=NULL,
                   url=NULL, anonymous=FALSE, verbose=FALSE,
-                  workspace=NULL) {
-  config <- read.config()
+                  workspace=NULL, ignore.config=FALSE) {
+  config <- if(ignore.config) list() else read.config()
 
   api_url <- default.if.null(url, config$url)
+  if(is.null(api_url)) {
+    api_url <- API_URL
+  }
 
   client <- structure(
     local({username=default.if.null(username, config$username)
@@ -105,6 +110,7 @@ gofigr.client <- function(username=NULL, password=NULL, api_key=NULL,
            workspace=default.if.null(workspace, config$workspace)
            environment()
                  }))
+
   class(client) <- "gofigr"
   return(client)
 }
@@ -150,7 +156,7 @@ authenticate_jwt <- function(gf) {
                     httr::content_type_json())
 
   if(res$status_code != 200) {
-    stop("Authentication failed")
+    stop(paste0("Authentication failed: ", rawToChar(res$content)))
   }
 
   res_data <- jsonlite::fromJSON(rawToChar(res$content))
@@ -210,7 +216,7 @@ is.expired.token <- function(res) {
 #' @param response httr response
 #'
 #' @return parsed JSON
-responseJSON <- function(response) {
+response.to.JSON <- function(response) {
   return(jsonlite::fromJSON(rawToChar(response$content),
                             simplifyDataFrame = FALSE,
                             simplifyMatrix = FALSE,
@@ -242,12 +248,7 @@ gofigr.make_handler <- function(name, method) {
 
     if(gf$anonymous) {
       res <- method(full_url)
-    } else if(!is.null(gf$api_key)) {
-      # API key auth
-      res <- method(full_url,
-                    httr::add_headers(Authorization = paste0('Token ', gf$api_key)),
-                    ...)
-    } else {
+    } else if(!is.null(gf$username) && !is.null(gf$password) && gf$username != "" && gf$password != "") {
       # JWT
 
       if(is.null(gf$access_token)) {
@@ -268,7 +269,13 @@ gofigr.make_handler <- function(name, method) {
                       httr::add_headers(Authorization = paste0('Bearer ', gf$access_token)),
                       ...)
       }
-
+    } else if(!is.null(gf$api_key)) {
+      # API key auth
+      res <- method(full_url,
+                    httr::add_headers(Authorization = paste0('Token ', gf$api_key)),
+                    ...)
+    } else {
+      stop("No username, password or API key supplied.")
     }
 
     if(res$status_code != expected_status_code) {
@@ -294,46 +301,6 @@ gofigr.PUT <- gofigr.make_handler("PUT", httr::PUT)
 gofigr.DELETE <- gofigr.make_handler("DELETE", httr::DELETE)
 
 
-#' List all workspaces available to the user.
-#'
-#' @param gf GoFigr client
-#'
-#' @return List of workspaces
-#' @export
-list.workspaces <- function(gf) {
-  responseJSON(gofigr.GET(gf, "workspace/"))
-}
-
-#' Retrieves workspace details.
-#'
-#' @param gf GoFigr client
-#' @param api_id API ID of the workspace
-#'
-#' @return workspace details
-#' @export
-#'
-#' @examples
-#' get.workspace("59da9bdb-2095-47a9-b414-c029f8a00e0e")
-get.workspace <- function(gf, api_id) {
-  responseJSON(gofigr.GET(gf, paste0("workspace/", api_id)))
-}
-
-#' Lists analyses under a workspace.
-#'
-#' @param gf GoFigr client
-#' @param workspace_id API id of the workspace
-#'
-#' @return list of analyses
-#' @export
-#'
-#' @examples
-#' list.analyses() # will use default workspace as specified in the GoFigr config
-#' list.analyses("59da9bdb-2095-47a9-b414-c029f8a00e0e")
-list.analyses <- function(gf, workspace_id=NULL) {
-  worx <- get.workspace(gf, default.if.null(workspace_id, gf$workspace))
-  return(worx$analyses)
-}
-
 #' Fetches user details for the currently logged in user.
 #'
 #' @param gf GoFigr client
@@ -344,7 +311,7 @@ list.analyses <- function(gf, workspace_id=NULL) {
 #' @examples
 #' user.info()
 user.info <- function(gf) {
-  responseJSON(gofigr.GET(gf, "user/"))[[1]]
+  response.to.JSON(gofigr.GET(gf, "user/"))[[1]]
 }
 
 #' Creates a new API key. This function will only succeed if using password
@@ -356,9 +323,48 @@ user.info <- function(gf) {
 #' @return response JSON. The "token" property will contain the API key if successful.
 #' @export
 create.api.key <- function(gf, name) {
-  responseJSON(gofigr.POST(gf, "api_key/",
-                           body=jsonlite::toJSON(list(name=name),
-                                                 auto_unbox=TRUE),
-                           httr::content_type_json(),
-                           expected_status_code = 201))
+  response.to.JSON(gofigr.POST(gf, "api_key/",
+                               body=jsonlite::toJSON(list(name=name),
+                                                     auto_unbox=TRUE),
+                               httr::content_type_json(),
+                               expected_status_code = 201))
+}
+
+get.api.id <- function(obj) {
+  if(is.character(obj)) {
+    return(obj)
+  } else if(is.list(obj)) {
+    return(obj$api_id)
+  } else {
+    stop(paste0("Unable to obtain API ID for object ", obj))
+  }
+}
+
+obj.to.JSON <- function(obj, auto_unbox=TRUE, ...) {
+  jsonlite::toJSON(obj, auto_unbox = auto_unbox, ...)
+}
+
+
+null.to.empty <- function(x) {default.if.null(x, "")}
+
+find.or.create <- function(gf, name, get.list, do.create, create=FALSE, type="object") {
+  objects <- get.list()
+  if(length(objects) > 0) {
+    matches <- objects[sapply(objects, function(x) {x$name == name})]
+  } else {
+    matches <- list() # because R doesn't like empty lists as subscripts
+  }
+
+  if(length(matches) == 1) {
+    return(matches[1])
+  } else if(length(matches) > 1) {
+    stop(paste0("Multiple instances of ", type, " match the name \"", name, "\". Please use an API ID instead."))
+  } else {
+    # No matches
+    if(!create) {
+      stop("Could not find any ", type, " matches for \"", name, "\". Did you mean to specify create=TRUE?")
+    }
+
+    return(do.create())
+  }
 }

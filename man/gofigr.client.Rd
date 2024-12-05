@@ -12,7 +12,8 @@ gofigr.client(
   url = NULL,
   anonymous = FALSE,
   verbose = FALSE,
-  workspace = NULL
+  workspace = NULL,
+  ignore.config = FALSE
 )
 }
 \arguments{
@@ -29,6 +30,9 @@ gofigr.client(
 \item{verbose}{set to TRUE to enable verbose output}
 
 \item{workspace}{default workspace (API ID)}
+
+\item{ignore.config}{if TRUE, will ignore environment variables and other
+external configuration}
 }
 \value{
 configured GoFigr client which you can pass to other functions

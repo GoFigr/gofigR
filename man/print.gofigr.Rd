@@ -4,7 +4,7 @@
 \alias{print.gofigr}
 \title{Default print method for a GoFigr client.}
 \usage{
-\method{print}{gofigr}(gf)
+\method{print}{gofigr}(gf, ...)
 }
 \arguments{
 \item{gf}{GoFigr client}

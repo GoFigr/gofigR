@@ -19,6 +19,3 @@ response JSON. The "token" property will contain the API key if successful.
 Creates a new API key. This function will only succeed if using password
 authentication.
 }
-\examples{
-create.api.key(gofigr.client(), "John's laptop")
-}

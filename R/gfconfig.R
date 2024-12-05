@@ -79,7 +79,7 @@ login.with.api.key <- function(gf, max_attempts) {
                            api_key <- trimws(api_key)
                            if(api_key == "") {return(api_key)}
 
-                           gf_tmp <- gofigr.client(api_key=api_key, verbose=TRUE)
+                           gf_tmp <- gofigr.client(api_key=api_key)
                            info_tmp <- user.info(gf_tmp)
                            return(api_key)
                          })
