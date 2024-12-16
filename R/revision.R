@@ -1,3 +1,4 @@
+#' @export
 DATA_TYPES <- list(
   data_frame = "dataframe",
   code = "code",
@@ -11,7 +12,7 @@ DATA_TYPES <- list(
 #'
 #' @return revision object
 #' @export
-get.revision <- function(gf, api_id) {
+get_revision <- function(gf, api_id) {
   response_to_JSON(gofigr_GET(gf, paste0("revision/", api_id)))
 }
 

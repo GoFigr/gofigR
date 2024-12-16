@@ -29,7 +29,7 @@ gofigr_fig_process <- function(path, options) {
     animation::im.convert(path, tmp_image_path, extra.opts=options$gofigr_im_options,
                           convert = "convert")
     if(file.exists(tmp_image_path)) {
-      extra_image_formats <- force(list(make_image_data("figure", tmp_image_path, "png", TRUE)))
+      extra_image_formats <- force(list(make_image_data("figure", tmp_image_path, "png", FALSE)))
 
       file.remove(tmp_image_path)
     }
@@ -50,16 +50,27 @@ gofigr_fig_process <- function(path, options) {
                                                       `R version`=paste0(info[[1]]),
                                                       `R details`=sess$R.version))
 
+  # Now that we have an API ID, apply the watermark
+  watermarked_path <- NULL
+  if(!is.null(options$gofigr_watermark) && image_format == "png") {
+    watermarked <- options$gofigr_watermark(rev_bare, magick::image_read(path))
+    watermarked_path <- paste0(path, "_watermarked.", image_format)
+    magick::image_write(watermarked, path=watermarked_path)
+
+    extra_image_formats <- append(extra_image_formats,
+                                  list(make_image_data("figure", watermarked_path, image_format, TRUE)))
+  }
+
   rev <- gofigR::update_revision_data(gf, rev_bare, silent=TRUE, new_data=append(list(
     make_code_data("Current chunk", options$code, "R"),
     make_code_data("Complete Markdown input", file(knitr::current_input()), "Rmd"),
-    make_image_data("figure", path, image_format, TRUE),
     make_image_data("figure", path, image_format, FALSE),
 
     make_text_data("sessionInfo", paste0(info, collapse="\n"))
   ), extra_image_formats))
 
-  return(path)
+  if(!is.null(watermarked_path)) { return(watermarked_path) }
+  else { return(path) }
 }
 
 #' Enables GoFigr within knitr.
@@ -69,6 +80,7 @@ gofigr_fig_process <- function(path, options) {
 #' @param workspace parent workspace
 #' @param create_analysis if TRUE and the analysis name does not exist, it will be created
 #' @param analysis_description description for the analysis if it needs to be created
+#' @param watermark type of watermark to use. See watermark_generator() to customize. NULL for no watermark.
 #'
 #' @return GoFigr client
 #' @export
@@ -77,7 +89,8 @@ enable_knitr <- function(analysis_api_id=NULL,
                          workspace=NULL,
                          create_analysis=TRUE,
                          analysis_description=NULL,
-                         im_options="-density 300") {
+                         im_options="-density 300",
+                         watermark=QR_WATERMARK) {
   # Create the GoFigr client
   gf <- gofigr_client(workspace=workspace)
 
@@ -98,7 +111,8 @@ enable_knitr <- function(analysis_api_id=NULL,
                 analysis=ana,
                 workspace=gf$workspace),
     fig.process=gofigr_fig_process,
-    gofigr_im_options=im_options
+    gofigr_im_options=im_options,
+    gofigr_watermark=watermark
   )
 
   return(gf)
