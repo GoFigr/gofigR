@@ -9,7 +9,8 @@ enable.knitr(
   analysis.name = NULL,
   workspace = NULL,
   create.analysis = TRUE,
-  analysis.description = NULL
+  analysis.description = NULL,
+  im.options = "-density 300"
 )
 }
 \arguments{

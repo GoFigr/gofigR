@@ -50,6 +50,7 @@ read.config <- function(path=CONFIG_PATH) {
 #' @param default default value if x is null, NA or ""
 #'
 #' @return x if not null, NA or "", or the default value
+#' @export
 default.if.null <- function(x, default) {
   if(is.null(x) || is.na(x) || x == "") {
     return(default)
