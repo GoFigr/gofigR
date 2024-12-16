@@ -7,9 +7,9 @@
 #' @export
 #'
 #' @examples
-#' get.workspace("59da9bdb-2095-47a9-b414-c029f8a00e0e")
-get.workspace <- function(gf, api_id) {
-  response.to.JSON(gofigr.GET(gf, paste0("workspace/", api_id)))
+#' get_workspace("59da9bdb-2095-47a9-b414-c029f8a00e0e")
+get_workspace <- function(gf, api_id) {
+  response_to_JSON(gofigr_GET(gf, paste0("workspace/", api_id)))
 }
 
 #' List all workspaces available to the user.
@@ -18,8 +18,8 @@ get.workspace <- function(gf, api_id) {
 #'
 #' @return List of workspaces
 #' @export
-list.workspaces <- function(gf) {
-  response.to.JSON(gofigr.GET(gf, "workspace/"))
+list_workspaces <- function(gf) {
+  response_to_JSON(gofigr_GET(gf, "workspace/"))
 }
 
 #' Creates a new workspace
@@ -30,10 +30,10 @@ list.workspaces <- function(gf) {
 #'
 #' @return created workspace object
 #' @export
-create.workspace <- function(gf, name, description=NULL) {
-  response.to.JSON(gofigr.POST(gf, "workspace/",
-                               body=obj.to.JSON(list(name=name,
-                                                     description=null.to.empty(description))),
+create_workspace <- function(gf, name, description=NULL) {
+  response_to_JSON(gofigr_POST(gf, "workspace/",
+                               body=obj_to_JSON(list(name=name,
+                                                     description=null_to_empty(description))),
                                httr::content_type_json(),
                                expected_status_code = 201))
 }
@@ -47,12 +47,12 @@ create.workspace <- function(gf, name, description=NULL) {
 #'
 #' @return workspace if found; throws an error if not.
 #' @export
-find.workspace <- function(gf, name, description=NULL, create=FALSE) {
-  find.or.create(gf, name, create=create,
+find_workspace <- function(gf, name, description=NULL, create=FALSE) {
+  find_or_create(gf, name, create=create,
                  type="workspace",
-                 get.list=function() { list.workspaces(gf) },
-                 do.create=function() {
-                   create.workspace(gf, name, description)
+                 get_list=function() { list_workspaces(gf) },
+                 do_create=function() {
+                   create_workspace(gf, name, description)
                  })
 }
 
@@ -66,7 +66,7 @@ find.workspace <- function(gf, name, description=NULL, create=FALSE) {
 #'
 #' @return workspace object
 #' @export
-infer.workspace <- function(gf, workspace) {
+infer_workspace <- function(gf, workspace) {
   if(!is.null(workspace)) {
     return(workspace)
   }

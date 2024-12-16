@@ -1,13 +1,13 @@
 #' Creates a GoFigr data object which can be attached to revisions.
 #'
 #' @param name name of this data
-#' @param type data type, e.g. DATA.TYPES$image
+#' @param type data type, e.g. DATA_TYPES$image
 #' @param metadata metadata associated with this data object
 #' @param data raw bytes
 #'
 #' @return data object
 #' @export
-make.raw.data <- function(name, type, metadata, data) {
+make_raw_data <- function(name, type, metadata, data) {
   obj <- list(name=name,
               type=type,
               metadata=metadata,
@@ -24,12 +24,12 @@ make.raw.data <- function(name, type, metadata, data) {
 #'
 #' @return GoFigr data object
 #' @export
-make.text.data <- function(name, contents, metadata=NULL) {
+make_text_data <- function(name, contents, metadata=NULL) {
   if(is.null(metadata)) {
     metadata <- list()
   }
   metadata$encoding <- "utf-8"
-  return(make.raw.data(name, DATA.TYPES$text,
+  return(make_raw_data(name, DATA_TYPES$text,
                        metadata=metadata, data=charToRaw(enc2utf8(contents))))
 }
 
@@ -43,54 +43,54 @@ make.text.data <- function(name, contents, metadata=NULL) {
 #'
 #' @return GoFigr data object
 #' @export
-make.code.data <- function(name, contents.or.file, language, format="text",
+make_code_data <- function(name, contents_or_file, language, format="text",
                            metadata=NULL) {
   if(is.null(metadata)) {
     metadata <- list()
   }
 
-  if(inherits(contents.or.file, 'connection')) {
-    contents <- readr::read_file(contents.or.file)
+  if(inherits(contents_or_file, 'connection')) {
+    contents <- readr::read_file(contents_or_file)
   } else {
-    contents <- contents.or.file
+    contents <- contents_or_file
   }
 
   metadata$encoding <- "utf-8"
   metadata$language <- language
   metadata$format <- format
 
-  return(make.raw.data(name, DATA.TYPES$code,
+  return(make_raw_data(name, DATA_TYPES$code,
                        metadata=metadata, data=charToRaw(enc2utf8(contents))))
 }
 
 #' Creates a GoFigr data object storing image data
 #'
 #' @param name name of this image
-#' @param file.or.raw image data, either a file or a raw vector
+#' @param file_or_raw image data, either a file or a raw vector
 #' @param format format, e.g. "png"
-#' @param is.watermarked whether this file has a GoFigr watermark
+#' @param is_watermarked whether this file has a GoFigr watermark
 #' @param metadata metadata associated with this image
 #'
 #' @return GoFigr data object
 #' @export
-make.image.data <- function(name, file.or.raw, format, is.watermarked,
+make_image_data <- function(name, file_or_raw, format, is_watermarked,
                             metadata=NULL) {
   if(is.null(metadata)) {
     metadata <- list()
   }
 
   metadata$format <- format
-  metadata$is_watermarked <- is.watermarked # not a typo -- API expects an underscore
+  metadata$is_watermarked <- is_watermarked
 
-  if(inherits(file.or.raw, "connection") || is.character(file.or.raw)) {
-    data <- readr::read_file_raw(file.or.raw)
-  } else if(is.raw(file.or.raw)) {
-    data <- file.or.raw
+  if(inherits(file_or_raw, "connection") || is.character(file_or_raw)) {
+    data <- readr::read_file_raw(file_or_raw)
+  } else if(is.raw(file_or_raw)) {
+    data <- file_or_raw
   } else {
     stop("Unsupported image data input. Please supply a file, a file path, or a raw vector.")
   }
 
-  return(make.raw.data(name, DATA.TYPES$image,
+  return(make_raw_data(name, DATA_TYPES$image,
                        metadata=metadata, data=data))
 }
 
@@ -102,7 +102,7 @@ make.image.data <- function(name, file.or.raw, format, is.watermarked,
 #'
 #' @return GoFigr data object
 #' @export
-make.table.data <- function(name, frame, metadata=NULL) {
+make_table_data <- function(name, frame, metadata=NULL) {
   if(is.null(metadata)) {
     metadata <- list()
   }
@@ -110,7 +110,7 @@ make.table.data <- function(name, frame, metadata=NULL) {
   metadata$format <- "csv"
   metadata$encoding <- "utf-8"
 
-  return(make.raw.data(name, DATA.TYPES$data.frame, metadata=metadata,
+  return(make_raw_data(name, DATA_TYPES$data_frame, metadata=metadata,
                        data=charToRaw(enc2utf8(readr::format_csv(frame)))))
 }
 
@@ -123,9 +123,9 @@ make.table.data <- function(name, frame, metadata=NULL) {
 #' @export
 #'
 #' @examples
-#' data <- make.raw.data("test", "text", list(a=1), charToRaw("abcdefksjdfklsd"))
-#' encode.raw.data(data)
-encode.raw.data <- function(data) {
+#' data <- make_raw_data("test", "text", list(a=1), charToRaw("abcdefksjdfklsd"))
+#' encode_raw_data(data)
+encode_raw_data <- function(data) {
   return(list(
     name=data$name,
     type=data$type,

@@ -8,8 +8,8 @@
 #' @return input, or result of validate(input) if validate is supplied
 #'
 #' @examples
-#' read.prompt("Enter username: ", validate=trimws)
-read.prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
+#' read_prompt("Enter username: ", validate=trimws)
+read_prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
   if(attempt > max_attempts) {
     stop(paste0("Failed after ", max_attempts, " attempts"))
   }
@@ -20,7 +20,7 @@ read.prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
       val <- validate(res)
     }, error=function(err) {
       cat(paste0(err, "\n"))
-      return(read.prompt(prompt, validate=validate, attempt = attempt + 1))
+      return(read_prompt(prompt, validate=validate, attempt = attempt + 1))
     })
   } else {
     return(res)
@@ -32,19 +32,19 @@ read.prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
 #' @param max_attempts
 #'
 #' @return GoFigr client
-login.with.username <- function(max_attempts) {
+login_with_username <- function(max_attempts) {
   connection_ok <- FALSE
   attempt <- 0
   while(!connection_ok && attempt < max_attempts) {
-    username <- read.prompt("Username: ")
-    password <- read.prompt("Password: ")
+    username <- read_prompt("Username: ")
+    password <- read_prompt("Password: ")
 
     cat("Testing connection...\n")
 
     tryCatch({
-      gf <- gofigr.client(username=username,
+      gf <- gofigr_client(username=username,
                           password=password)
-      info <- user.info(gf) # Make an authenticated request
+      info <- user_info(gf) # Make an authenticated request
 
       if(!is.null(info$username)) {
         cat("  => Success\n")
@@ -73,21 +73,21 @@ login.with.username <- function(max_attempts) {
 #' @param max_attempts
 #'
 #' @return API key, either supplied by the user or newly created
-login.with.api.key <- function(gf, max_attempts) {
-  api_key <- read.prompt("API key (leave blank to generate a new one): ",
+login_with_api_key <- function(gf, max_attempts) {
+  api_key <- read_prompt("API key (leave blank to generate a new one): ",
                          validate=function(api_key) {
                            api_key <- trimws(api_key)
                            if(api_key == "") {return(api_key)}
 
-                           gf_tmp <- gofigr.client(api_key=api_key)
-                           info_tmp <- user.info(gf_tmp)
+                           gf_tmp <- gofigr_client(api_key=api_key)
+                           info_tmp <- user_info(gf_tmp)
                            return(api_key)
                          })
   if(api_key != "") {
     return(api_key)
   }
 
-  key_name <- read.prompt("Key name (e.g. Alyssa's laptop): ",
+  key_name <- read_prompt("Key name (e.g. Alyssa's laptop): ",
                           validate=function(x) {
                             x <- trimws(x)
                             if(x == "") {
@@ -96,7 +96,7 @@ login.with.api.key <- function(gf, max_attempts) {
                             return(x)
                           })
 
-  created_key <- create.api.key(gf, key_name)
+  created_key <- create_api_key(gf, key_name)
   return(created_key$token)
 }
 
@@ -115,12 +115,12 @@ gfconfig <- function(max_attempts=3) {
   cat("Welcome to GoFigr! This wizard will help you get up and running.\n")
   cat("-------------------------------------------------------------------\n\n")
 
-  gf_pw_auth <- login.with.username(max_attempts)
-  api_key <- login.with.api.key(gf_pw_auth, max_attempts)
-  gf <- gofigr.client(api_key=api_key)
+  gf_pw_auth <- login_with_username(max_attempts)
+  api_key <- login_with_api_key(gf_pw_auth, max_attempts)
+  gf <- gofigr_client(api_key=api_key)
 
   cat("Fetching workspaces...\n")
-  worxs <- list.workspaces(gf)
+  worxs <- list_workspaces(gf)
   worx_df <- NULL
   id <- 1
   lapply(worxs, function(wx) {
@@ -134,7 +134,7 @@ gfconfig <- function(max_attempts=3) {
   print(knitr::kable(worx_df))
 
   range <- paste0(1, "-", max(worx_df$Number))
-  worx_id <- read.prompt(paste0("\nPlease select a default workspace (", range, "): "),
+  worx_id <- read_prompt(paste0("\nPlease select a default workspace (", range, "): "),
                          validate=function(x) {
                            x <- as.numeric(x)
                            if(is.na(x) || x < 1 || x > max(worx_df$Number)) {

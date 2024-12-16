@@ -5,8 +5,8 @@
 #'
 #' @return figure object
 #' @export
-get.figure <- function(gf, api_id) {
-  response.to.JSON(gofigr.GET(gf, paste0("figure/", api_id)))
+get_figure <- function(gf, api_id) {
+  response_to_JSON(gofigr_GET(gf, paste0("figure/", api_id)))
 }
 
 
@@ -20,11 +20,11 @@ get.figure <- function(gf, api_id) {
 #'
 #' @return created figure object
 #' @export
-create.figure <- function(gf, analysis, name, description=NULL) {
-  response.to.JSON(gofigr.POST(gf, "figure/",
-                               body=obj.to.JSON(list(name=name,
-                                                     description=null.to.empty(description),
-                                                     analysis=get.api.id(analysis))),
+create_figure <- function(gf, analysis, name, description=NULL) {
+  response_to_JSON(gofigr_POST(gf, "figure/",
+                               body=obj_to_JSON(list(name=name,
+                                                     description=null_to_empty(description),
+                                                     analysis=get_api_id(analysis))),
                                httr::content_type_json(),
                                expected_status_code = 201))
 }
@@ -39,12 +39,12 @@ create.figure <- function(gf, analysis, name, description=NULL) {
 #'
 #' @return figure object
 #' @export
-find.figure <- function(gf, analysis, name, description=NULL, create=FALSE) {
-  ana <- get.analysis(gf, get.api.id(analysis))
-  find.or.create(gf, name, create=create,
+find_figure <- function(gf, analysis, name, description=NULL, create=FALSE) {
+  ana <- get_analysis(gf, get_api_id(analysis))
+  find_or_create(gf, name, create=create,
                  type="figure",
-                 get.list=function() { ana$figures },
-                 do.create=function() {
-                   create.figure(gf, name, description, analysis=get.api.id(ana))
+                 get_list=function() { ana$figures },
+                 do_create=function() {
+                   create_figure(gf, name, description, analysis=get_api_id(ana))
                  })
 }

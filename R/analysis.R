@@ -7,10 +7,10 @@
 #' @export
 #'
 #' @examples
-#' list.analyses() # will use default workspace as specified in the GoFigr config
-#' list.analyses("59da9bdb-2095-47a9-b414-c029f8a00e0e")
+#' list_analyses() # will use default workspace as specified in the GoFigr config
+#' list_analyses("59da9bdb-2095-47a9-b414-c029f8a00e0e")
 list_analyses <- function(gf, workspace_id=NULL) {
-  worx <- get.workspace(gf, default.if.null(workspace_id, gf$workspace))
+  worx <- get_workspace(gf, default_if_null(workspace_id, gf$workspace))
   return(worx$analyses)
 }
 
@@ -23,11 +23,11 @@ list_analyses <- function(gf, workspace_id=NULL) {
 #'
 #' @return created analysis
 #' @export
-create.analysis <- function(gf, name, description=NULL, workspace=NULL) {
-  response.to.JSON(gofigr.POST(gf, "analysis/",
-                               body=obj.to.JSON(list(name=name,
-                                                     description=null.to.empty(description),
-                                                     workspace=infer.workspace(gf, workspace))),
+create_analysis <- function(gf, name, description=NULL, workspace=NULL) {
+  response_to_JSON(gofigr_POST(gf, "analysis/",
+                               body=obj_to_JSON(list(name=name,
+                                                     description=null_to_empty(description),
+                                                     workspace=infer_workspace(gf, workspace))),
                                httr::content_type_json(),
                                expected_status_code = 201))
 }
@@ -40,8 +40,8 @@ create.analysis <- function(gf, name, description=NULL, workspace=NULL) {
 #'
 #' @return analysis object
 #' @export
-get.analysis <- function(gf, api_id) {
-  response.to.JSON(gofigr.GET(gf, paste0("analysis/", api_id)))
+get_analysis <- function(gf, api_id) {
+  response_to_JSON(gofigr_GET(gf, paste0("analysis/", api_id)))
 }
 
 
@@ -55,12 +55,12 @@ get.analysis <- function(gf, api_id) {
 #'
 #' @return analysis object
 #' @export
-find.analysis <- function(gf, name, description=NULL, workspace=NULL, create=FALSE) {
-  worx <- get.workspace(gf, infer.workspace(gf, workspace))
-  find.or.create(gf, name, create=create,
+find_analysis <- function(gf, name, description=NULL, workspace=NULL, create=FALSE) {
+  worx <- get_workspace(gf, infer_workspace(gf, workspace))
+  find_or_create(gf, name, create=create,
                  type="analysis",
-                 get.list=function() { worx$analyses },
-                 do.create=function() {
-                   create.analysis(gf, name, description, workspace=get.api.id(worx))
+                 get_list=function() { worx$analyses },
+                 do_create=function() {
+                   create_analysis(gf, name, description, workspace=get_api_id(worx))
                  })
 }

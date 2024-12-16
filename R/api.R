@@ -20,9 +20,9 @@ CONFIG_PATH = file.path(path.expand('~'), ".gofigr")
 #' @export
 #'
 #' @examples
-#' read.config()
-#' read.config("~/.gofigr")
-read.config <- function(path=CONFIG_PATH) {
+#' read_config()
+#' read_config("~/.gofigr")
+read_config <- function(path=CONFIG_PATH) {
   if(!file.exists(path)) {
     return(list())
   }
@@ -31,11 +31,11 @@ read.config <- function(path=CONFIG_PATH) {
     data <- jsonlite::fromJSON(file(path))
 
     # Prioritize environment variables
-    data$username <- Sys.getenv("GF_USERNAME", unset=default.if.null(data$username, ""))
-    data$password <- Sys.getenv("GF_PASSWORD", unset=default.if.null(data$password, ""))
-    data$api_key <- Sys.getenv("GF_API_KEY", unset=default.if.null(data$api_key, ""))
-    data$workspace <- Sys.getenv("GF_WORKSPACE", unset=default.if.null(data$workspace, ""))
-    data$url <- Sys.getenv("GF_URL", unset=default.if.null(data$url, API_URL))
+    data$username <- Sys.getenv("GF_USERNAME", unset=default_if_null(data$username, ""))
+    data$password <- Sys.getenv("GF_PASSWORD", unset=default_if_null(data$password, ""))
+    data$api_key <- Sys.getenv("GF_API_KEY", unset=default_if_null(data$api_key, ""))
+    data$workspace <- Sys.getenv("GF_WORKSPACE", unset=default_if_null(data$workspace, ""))
+    data$url <- Sys.getenv("GF_URL", unset=default_if_null(data$url, API_URL))
 
   return(data)
   }, error=function(err) {
@@ -51,7 +51,7 @@ read.config <- function(path=CONFIG_PATH) {
 #'
 #' @return x if not null, NA or "", or the default value
 #' @export
-default.if.null <- function(x, default) {
+default_if_null <- function(x, default) {
   if(is.null(x) || is.na(x) || x == "") {
     return(default)
   } else {
@@ -78,37 +78,37 @@ default.if.null <- function(x, default) {
 #' @param anonymous whether to login anonymously
 #' @param verbose set to TRUE to enable verbose output
 #' @param workspace default workspace (API ID)
-#' @param ignore.config if TRUE, will ignore environment variables and other
+#' @param ignore_config if TRUE, will ignore environment variables and other
 #' external configuration
 #'
 #' @return configured GoFigr client which you can pass to other functions
 #' @export
 #'
 #' @examples
-#' gofigr.client()  # use config from ~/.gofigr or environment variables
-#' gofigr.client(username="joe", password="abc123") # password login
-#' gofigr.client(api_key="abcdef0123456789") # API key login
-gofigr.client <- function(username=NULL, password=NULL, api_key=NULL,
+#' gofigr_client()  # use config from ~/.gofigr or environment variables
+#' gofigr_client(username="joe", password="abc123") # password login
+#' gofigr_client(api_key="abcdef0123456789") # API key login
+gofigr_client <- function(username=NULL, password=NULL, api_key=NULL,
                   url=NULL, anonymous=FALSE, verbose=FALSE,
-                  workspace=NULL, ignore.config=FALSE) {
-  config <- if(ignore.config) list() else read.config()
+                  workspace=NULL, ignore_config=FALSE) {
+  config <- if(ignore_config) list() else read_config()
 
-  api_url <- default.if.null(url, config$url)
+  api_url <- default_if_null(url, config$url)
   if(is.null(api_url)) {
     api_url <- API_URL
   }
 
   client <- structure(
-    local({username=default.if.null(username, config$username)
-           password=default.if.null(password, config$password)
-           api_key=default.if.null(api_key, config$api_key)
+    local({username=default_if_null(username, config$username)
+           password=default_if_null(password, config$password)
+           api_key=default_if_null(api_key, config$api_key)
            url=paste0(api_url, "/api/", API_VERSION, "/")
            jwt_url=paste0(api_url, "/api/token/")
            anonymous=anonymous
            access_token=NULL
            refresh_token=NULL
            verbose=verbose
-           workspace=default.if.null(workspace, config$workspace)
+           workspace=default_if_null(workspace, config$workspace)
            environment()
                  }))
 
@@ -133,7 +133,7 @@ print.gofigr <- function(gf, ...) {
 #' @param ... passed to cat
 #'
 #' @return NA
-gofigr.cat <- function(gf, content, ...) {
+gofigr_cat <- function(gf, content, ...) {
   if(gf$verbose) {
     cat(paste0(content, "\n"), ...)
   }
@@ -165,7 +165,7 @@ authenticate_jwt <- function(gf) {
   gf$access_token <- res_data$access
   gf$refresh_token <- res_data$refresh
 
-  gofigr.cat(gf, "JWT authentication successful")
+  gofigr_cat(gf, "JWT authentication successful")
 }
 
 #' Refreshes the JWT access token. Attempts re-authentication if refresh fails.
@@ -187,9 +187,9 @@ refresh_jwt <- function(gf) {
     res_data <- jsonlite::fromJSON(rawToChar(res$content))
     gf$access_token <- res_data$access
 
-    gofigr.cat(gf, "JWT refresh successful")
+    gofigr_cat(gf, "JWT refresh successful")
   } else {
-    gofigr.cat(gf, "JWT refresh failed. Attempting re-authentication.")
+    gofigr_cat(gf, "JWT refresh failed. Attempting re-authentication.")
     authenticate_jwt(gf)
   }
 }
@@ -199,7 +199,7 @@ refresh_jwt <- function(gf) {
 #' @param res httr response
 #'
 #' @return True if token expired
-is.expired.token <- function(res) {
+is_expired_token <- function(res) {
   if(res$status_code != 401) { # UNAUTHORIZED
     return(FALSE)
   }
@@ -217,7 +217,7 @@ is.expired.token <- function(res) {
 #' @param response httr response
 #'
 #' @return parsed JSON
-response.to.JSON <- function(response) {
+response_to_JSON <- function(response) {
   return(jsonlite::fromJSON(rawToChar(response$content),
                             simplifyDataFrame = FALSE,
                             simplifyMatrix = FALSE,
@@ -234,18 +234,10 @@ response.to.JSON <- function(response) {
 #' an expected HTTP status code.
 #'
 #' @export
-#'
-#' @examples
-#' gofigr.GET <- gofigr.make_handler("GET", httr::GET)
-#' responseJSON(gofigr.POST(gf, "api_key/",
-#'                          body=jsonlite::toJSON(list(name=name),
-#'                                                auto_unbox=TRUE),
-#'                          content_type_json(),
-#'              expected_status_code = 201))
-gofigr.make_handler <- function(name, method) {
+gofigr_make_handler <- function(name, method) {
   function(gf, url, expected_status_code=200, ...) {
     full_url <- paste0(gf$url, url)
-    gofigr.cat(gf, paste0(name, ": ", full_url))
+    gofigr_cat(gf, paste0(name, ": ", full_url))
 
     if(gf$anonymous) {
       res <- method(full_url)
@@ -262,8 +254,8 @@ gofigr.make_handler <- function(name, method) {
                     httr::add_headers(Authorization = paste0('Bearer ', gf$access_token)),
                     ...)
 
-      if(is.expired.token(res)) {  # Token expired?
-        gofigr.cat(gf, "Token expired. Trying refresh.")
+      if(is_expired_token(res)) {  # Token expired?
+        gofigr_cat(gf, "Token expired. Trying refresh.")
         refresh_jwt(gf)
 
         res <- method(full_url,
@@ -290,19 +282,19 @@ gofigr.make_handler <- function(name, method) {
 }
 
 #' @export
-gofigr.GET <- gofigr.make_handler("GET", httr::GET)
+gofigr_GET <- gofigr_make_handler("GET", httr::GET)
 
 #' @export
-gofigr.POST <- gofigr.make_handler("POST", httr::POST)
+gofigr_POST <- gofigr_make_handler("POST", httr::POST)
 
 #' @export
-gofigr.PUT <- gofigr.make_handler("PUT", httr::PUT)
+gofigr_PUT <- gofigr_make_handler("PUT", httr::PUT)
 
 #' @export
-gofigr.PATCH <- gofigr.make_handler("PATCH", httr::PATCH)
+gofigr_PATCH <- gofigr_make_handler("PATCH", httr::PATCH)
 
 #' @export
-gofigr.DELETE <- gofigr.make_handler("DELETE", httr::DELETE)
+gofigr_DELETE <- gofigr_make_handler("DELETE", httr::DELETE)
 
 
 #' Fetches user details for the currently logged in user.
@@ -313,9 +305,9 @@ gofigr.DELETE <- gofigr.make_handler("DELETE", httr::DELETE)
 #' @export
 #'
 #' @examples
-#' user.info()
-user.info <- function(gf) {
-  response.to.JSON(gofigr.GET(gf, "user/"))[[1]]
+#' user_info()
+user_info <- function(gf) {
+  response_to_JSON(gofigr_GET(gf, "user/"))[[1]]
 }
 
 #' Creates a new API key. This function will only succeed if using password
@@ -326,15 +318,21 @@ user.info <- function(gf) {
 #'
 #' @return response JSON. The "token" property will contain the API key if successful.
 #' @export
-create.api.key <- function(gf, name) {
-  response.to.JSON(gofigr.POST(gf, "api_key/",
+create_api_key <- function(gf, name) {
+  response_to_JSON(gofigr_POST(gf, "api_key/",
                                body=jsonlite::toJSON(list(name=name),
                                                      auto_unbox=TRUE),
                                httr::content_type_json(),
                                expected_status_code = 201))
 }
 
-get.api.id <- function(obj) {
+#' Returns obj$api_id if argument is an object, or identity if it's a string.
+#'
+#' @param obj object for which to get the API ID
+#'
+#' @return API ID, a string
+#' @export
+get_api_id <- function(obj) {
   if(is.character(obj)) {
     return(obj)
   } else if(is.list(obj)) {
@@ -344,15 +342,15 @@ get.api.id <- function(obj) {
   }
 }
 
-obj.to.JSON <- function(obj, auto_unbox=TRUE, ...) {
+obj_to_JSON <- function(obj, auto_unbox=TRUE, ...) {
   jsonlite::toJSON(obj, auto_unbox = auto_unbox, ...)
 }
 
 
-null.to.empty <- function(x) {default.if.null(x, "")}
+null_to_empty <- function(x) {default_if_null(x, "")}
 
-find.or.create <- function(gf, name, get.list, do.create, create=FALSE, type="object") {
-  objects <- get.list()
+find_or_create <- function(gf, name, get_list, do_create, create=FALSE, type="object") {
+  objects <- get_list()
   if(length(objects) > 0) {
     matches <- objects[sapply(objects, function(x) {x$name == name})]
   } else {
@@ -369,6 +367,6 @@ find.or.create <- function(gf, name, get.list, do.create, create=FALSE, type="ob
       stop("Could not find any ", type, " matches for \"", name, "\". Did you mean to specify create=TRUE?")
     }
 
-    return(do.create())
+    return(do_create())
   }
 }
