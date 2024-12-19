@@ -138,9 +138,5 @@ enable_knitr <- function(analysis_api_id=NULL,
     gofigr_im_options=im_options,
     gofigr_watermark=watermark
   )
-
-  # Configure ImageMagick
-  Sys.setenv(MAGICK_TEMPORARY_PATH=".")
-
   return(gf)
 }

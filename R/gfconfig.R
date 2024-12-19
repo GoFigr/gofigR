@@ -37,13 +37,14 @@ login_with_username <- function(max_attempts) {
   attempt <- 0
   while(!connection_ok && attempt < max_attempts) {
     username <- read_prompt("Username: ")
-    password <- read_prompt("Password: ")
+    password <- getPass("Password: ")
 
     cat("Testing connection...\n")
 
     tryCatch({
       gf <- gofigr_client(username=username,
-                          password=password)
+                          password=password,
+                          ignore_config=TRUE)
       info <- user_info(gf) # Make an authenticated request
 
       if(!is.null(info$username)) {
@@ -79,7 +80,8 @@ login_with_api_key <- function(gf, max_attempts) {
                            api_key <- trimws(api_key)
                            if(api_key == "") {return(api_key)}
 
-                           gf_tmp <- gofigr_client(api_key=api_key)
+                           gf_tmp <- gofigr_client(api_key=api_key,
+                                                   ignore_config=TRUE)
                            info_tmp <- user_info(gf_tmp)
                            return(api_key)
                          })
@@ -151,5 +153,5 @@ gfconfig <- function(max_attempts=3) {
   write(toJSON(config, auto_unbox=TRUE, pretty=TRUE), fileConn)
   close(fileConn)
 
-  invisible(cat(paste0("\nConfiguration saved to ", config_path, ". Happy analysis!")))
+  invisible(cat(paste0("\nConfiguration saved to ", config_path, ". Happy analysis!\n")))
 }

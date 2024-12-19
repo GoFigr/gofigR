@@ -6,11 +6,11 @@
 \usage{
 watermark_generator(
   show_qr = TRUE,
-  qr_size_px = c(100, 100),
-  link_size_px = c(650, 100),
+  qr_size_px = c(150, 150),
+  link_size_px = c(825, 100),
   link_bg = "#ffffff",
   font_color = "#000000",
-  font_size = 14,
+  font_size = 22,
   font = "mono"
 )
 }
