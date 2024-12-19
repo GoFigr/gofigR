@@ -52,7 +52,7 @@ read_config <- function(path=CONFIG_PATH) {
 #' @return x if not null, NA or "", or the default value
 #' @export
 default_if_null <- function(x, default) {
-  if(is.null(x) || is.na(x) || x == "") {
+  if(is.null(x) || identical(x, NA) || identical(x, "") || identical(x, character(0))) {
     return(default)
   } else {
     return(x)

@@ -126,11 +126,17 @@ make_table_data <- function(name, frame, metadata=NULL) {
 #' data <- make_raw_data("test", "text", list(a=1), charToRaw("abcdefksjdfklsd"))
 #' encode_raw_data(data)
 encode_raw_data <- function(data) {
+  if(identical(data$data, raw(0))) {
+    datum <- ""
+  } else {
+    datum <- base64encode(data$data)
+  }
+
   return(list(
     name=data$name,
     type=data$type,
     metadata=data$metadata,
-    data=base64encode(data$data)
+    data=datum
   ))
 }
 
