@@ -24,6 +24,8 @@ gofigr_fig_process <- function(path, options) {
 
   image_format <- tolower(tools::file_ext(path))
   extra_image_formats <- list()
+
+  primary_image_path <- NULL # will be used for the watermark
   if(image_format == "pdf") {
     tmp_image_path <- tempfile(fileext = ".png")
     animation::im.convert(path, tmp_image_path, extra.opts=options$gofigr_im_options,
@@ -31,8 +33,10 @@ gofigr_fig_process <- function(path, options) {
     if(file.exists(tmp_image_path)) {
       extra_image_formats <- force(list(make_image_data("figure", tmp_image_path, "png", FALSE)))
 
-      file.remove(tmp_image_path)
+      primary_image_path <- tmp_image_path
     }
+  } else {
+    primary_image_path <- path
   }
 
   figure_name <- paste0(figure_name, " - ", default_if_null(options$fig.num, "NA"))
@@ -48,17 +52,18 @@ gofigr_fig_process <- function(path, options) {
                                       metadata = list(input=knitr::current_input(),
                                                       `getwd`=getwd(),
                                                       `R version`=paste0(info[[1]]),
-                                                      `R details`=sess$R.version))
+                                                      `R details`=sess$R.version,
+                                                      `Sys.info()`=as.list(Sys.info())))
 
   # Now that we have an API ID, apply the watermark
   watermarked_path <- NULL
-  if(!is.null(options$gofigr_watermark) && image_format == "png") {
-    watermarked <- options$gofigr_watermark(rev_bare, magick::image_read(path))
-    watermarked_path <- paste0(path, "_watermarked.", image_format)
+  if(!is.null(options$gofigr_watermark) && !is.null(primary_image_path)) {
+    watermarked <- options$gofigr_watermark(rev_bare, magick::image_read(primary_image_path))
+    watermarked_path <- paste0(path, "_watermarked.png")
     magick::image_write(watermarked, path=watermarked_path)
 
     extra_image_formats <- append(extra_image_formats,
-                                  list(make_image_data("figure", watermarked_path, image_format, TRUE)))
+                                  list(make_image_data("figure", watermarked_path, "png", TRUE)))
   }
 
   rev <- gofigR::update_revision_data(gf, rev_bare, silent=TRUE, new_data=append(list(
@@ -69,7 +74,8 @@ gofigr_fig_process <- function(path, options) {
     make_text_data("sessionInfo", paste0(info, collapse="\n"))
   ), extra_image_formats))
 
-  if(!is.null(watermarked_path)) { return(watermarked_path) }
+  if(image_format == "pdf") { return(path) } # TODO: output PDF watermarks
+  else if(!is.null(watermarked_path)) { return(watermarked_path) }
   else { return(path) }
 }
 
