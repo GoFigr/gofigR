@@ -92,10 +92,14 @@ watermark_generator <- function(show_qr=TRUE,
       file.remove(svg_path)
 
       link_img <- stack_horizontally(list(link_img, qr_img))
+
+      image_destroy(qr_img)
     }
 
     # Composite
-    return(stack_vertically(list(image, link_img)))
+    res <- stack_vertically(list(image, link_img))
+    image_destroy(link_img)
+    return(res)
   }
 }
 

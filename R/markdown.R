@@ -58,9 +58,13 @@ gofigr_fig_process <- function(path, options) {
   # Now that we have an API ID, apply the watermark
   watermarked_path <- NULL
   if(!is.null(options$gofigr_watermark) && !is.null(primary_image_path)) {
-    watermarked <- options$gofigr_watermark(rev_bare, magick::image_read(primary_image_path))
+    primary_img <- magick::image_read(primary_image_path)
+    watermarked <- options$gofigr_watermark(rev_bare, primary_img)
     watermarked_path <- paste0(path, "_watermarked.png")
     magick::image_write(watermarked, path=watermarked_path)
+
+    image_destroy(primary_img)
+    image_destroy(watermarked)
 
     extra_image_formats <- append(extra_image_formats,
                                   list(make_image_data("figure", watermarked_path, "png", TRUE)))
