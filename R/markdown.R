@@ -1,11 +1,8 @@
-#' Implements the GoFigr hook for knitr's fig.process.
-#'
-#' @param path figure path
-#' @param options chunk options
-#'
-#' @return updated figure path
-#' @export
-gofigr_fig_process <- function(path, options) {
+gofigr_fig_process_internal <- function(path, options) {
+  if(identical(options$gofigr_on, FALSE)) {
+    return(path)
+  }
+
   gf_opts <- options$gofigr
   if(is.null(gf_opts)) {
     warn("GoFigr hasn't been configured. Did you call gofigR::enable_knitr?")
@@ -71,7 +68,7 @@ gofigr_fig_process <- function(path, options) {
   }
 
   rev <- gofigR::update_revision_data(gf, rev_bare, silent=TRUE, new_data=append(list(
-    make_code_data("Current chunk", options$code, "R"),
+    make_code_data("Current chunk", paste0(options$code, collapse="\n"), "R"),
     make_code_data("Complete Markdown input", file(knitr::current_input()), "Rmd"),
     make_image_data("figure", path, image_format, FALSE),
 
@@ -81,6 +78,23 @@ gofigr_fig_process <- function(path, options) {
   if(image_format == "pdf") { return(path) } # TODO: output PDF watermarks
   else if(!is.null(watermarked_path)) { return(watermarked_path) }
   else { return(path) }
+}
+
+#' Implements the GoFigr hook for knitr's fig.process.
+#'
+#' @param path figure path
+#' @param options chunk options
+#'
+#' @return updated figure path
+#' @export
+gofigr_fig_process <- function(path, options) {
+  tryCatch({gofigr_fig_process_internal(path, options)},
+           error=function(e) {
+             write(paste0("GoFigr publication failed: ", e, "\n"), stderr())
+           },
+           finally={
+             gc() # image_destroy doesn't actually clear the on-disk cache until it's GC'd
+           })
 }
 
 #' Enables GoFigr within knitr.
@@ -124,6 +138,9 @@ enable_knitr <- function(analysis_api_id=NULL,
     gofigr_im_options=im_options,
     gofigr_watermark=watermark
   )
+
+  # Configure ImageMagick
+  Sys.setenv(MAGICK_TEMPORARY_PATH=".")
 
   return(gf)
 }
