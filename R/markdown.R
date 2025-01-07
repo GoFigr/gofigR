@@ -67,13 +67,31 @@ gofigr_fig_process_internal <- function(path, options) {
                                   list(make_image_data("figure", watermarked_path, "png", TRUE)))
   }
 
-  rev <- gofigR::update_revision_data(gf, rev_bare, silent=TRUE, new_data=append(list(
+  file_data <- list()
+  if(!is.null(options$gofigr_captured_rds)) {
+
+    file_data <- append(file_data,
+                                  lapply(options$gofigr_captured_rds,
+                                         function(datum) {
+                                           tmp_path <- tempfile()
+                                           saveRDS(datum$object, tmp_path)
+                                           res <- force(make_file_data(datum$name, tmp_path))
+                                           file.remove(tmp_path)
+                                           return(res)
+                                         }))
+  }
+
+  data_objects <- append(list(
     make_code_data("Current chunk", paste0(options$code, collapse="\n"), "R"),
     make_code_data("Complete Markdown input", file(knitr::current_input()), "Rmd"),
     make_image_data("figure", path, image_format, FALSE),
 
     make_text_data("sessionInfo", paste0(info, collapse="\n"))
-  ), extra_image_formats))
+  ), extra_image_formats)
+
+  data_objects <- append(data_objects, file_data)
+
+  rev <- gofigR::update_revision_data(gf, rev_bare, silent=TRUE, new_data=data_objects)
 
   if(image_format == "pdf") { return(path) } # TODO: output PDF watermarks
   else if(!is.null(watermarked_path)) { return(watermarked_path) }
@@ -93,6 +111,9 @@ gofigr_fig_process <- function(path, options) {
              write(paste0("GoFigr publication failed: ", e, "\n"), stderr())
            },
            finally={
+             # Clear captured data
+             #knitr::opts_chunk$set(gofigr_captured_rds = list())
+
              gc() # image_destroy doesn't actually clear the on-disk cache until it's GC'd
            })
 }
@@ -136,7 +157,15 @@ enable_knitr <- function(analysis_api_id=NULL,
                 workspace=gf$workspace),
     fig.process=gofigr_fig_process,
     gofigr_im_options=im_options,
-    gofigr_watermark=watermark
+    gofigr_watermark=watermark,
+    gofigr_captured_rds=NULL
   )
   return(gf)
+}
+
+capture_rds <- function(name, object) {
+  current_list <- knitr::opts_chunk$get("gofigr_captured_rds")
+  knitr::opts_chunk$set(gofigr_captured_rds = append(current_list,
+                                                     list(list(name=name,
+                                                               object=object))))
 }

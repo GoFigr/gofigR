@@ -94,6 +94,38 @@ make_image_data <- function(name, file_or_raw, format, is_watermarked,
                        metadata=metadata, data=data))
 }
 
+#' Creates a GoFigr data object storing file data
+#'
+#' @param name name of this file
+#' @param file_or_raw image data, either a file or a raw vector
+#' @param path file path
+#' @param metadata metadata associated with this file
+#'
+#' @return GoFigr data object
+#' @export
+make_file_data <- function(name, file_or_raw, path=NULL, metadata=NULL) {
+  if(is.null(metadata)) {
+    metadata <- list()
+  }
+
+  if(is.character(file_or_raw)) {
+    path <- file_or_raw
+  }
+
+  metadata$path <- path
+
+  if(inherits(file_or_raw, "connection") || is.character(file_or_raw)) {
+    data <- readr::read_file_raw(file_or_raw)
+  } else if(is.raw(file_or_raw)) {
+    data <- file_or_raw
+  } else {
+    stop("Unsupported image data input. Please supply a file, a file path, or a raw vector.")
+  }
+
+  return(make_raw_data(name, DATA_TYPES$file,
+                       metadata=metadata, data=data))
+}
+
 #' Creates a GoFigr data object storing data.frame/tabular data
 #'
 #' @param name name of this data object

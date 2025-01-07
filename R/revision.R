@@ -3,7 +3,8 @@ DATA_TYPES <- list(
   data_frame = "dataframe",
   code = "code",
   image = "image",
-  text = "text")
+  text = "text",
+  file = "file")
 
 #' Fetches a revision given an API ID.
 #'
