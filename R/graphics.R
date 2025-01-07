@@ -6,8 +6,6 @@ get_options <- function() {
   return(.GlobalEnv[["gofigr_options"]])
 }
 
-rstudio_deferred_plots <- list()
-
 infer_input_path <- function() {
   if(interactive()) {
     return(rstudioapi::getSourceEditorContext()$path)
@@ -17,21 +15,28 @@ infer_input_path <- function() {
 }
 
 rstudio_chunk_callback <- function(chunkName, chunkCode) {
-  chunkCode <- textutils::HTMLdecode(chunkCode)
-  lapply(rstudio_deferred_plots, function(defplot) {
-    defplot(chunkName, chunkCode)
+  tryCatch({
+    chunkCode <- textutils::HTMLdecode(chunkCode)
+    lapply(.GlobalEnv$rstudio_deferred_plots, function(defplot) {
+      defplot(chunkName, chunkCode)
+    })
+  }, finally=function() {
+    assign("rstudio_deferred_plots", list(), .GlobalEnv)
   })
-  rstudio_deferred_plots <<- list()
   return(list())
 }
 
 split_args <- function(...) {
   args <- list(...)
-  first=args[[1]]
-  if(length(args) > 1) {
-    other_args <- args[[2:length(args)]]
-    names(other_args) <- names(args)[[2:length(args)]]
-  }  else {
+
+  first <- args[[1]]
+  rest <- args[-1]
+
+  if(length(args) == 1) {
+    other_args <- list()
+  } else if(length(args) >= 2) {
+    other_args <- rest
+  } else {
     other_args <- list()
   }
   return(list(first=first, rest=other_args))
@@ -44,12 +49,12 @@ split_args <- function(...) {
 #'
 #' @return same as plot()
 #' @export
-plot_knitr <- function(...) {
+plot_knitr <- function(..., base_func) {
   options <- knitr::opts_current
 
   # Is GoFigr disabled for current chunk?
   if(identical(options$gofigr_on, FALSE)) {
-    return(base::plot(...))
+    return(base_func(...))
   }
 
   args <- split_args(...)
@@ -87,18 +92,18 @@ parse_params <- function(chunk, patterns=all_patterns$md) {
 #'
 #' @return same as plot()
 #' @export
-plot_rstudio <- function(...) {
-  base::plot(...)
+plot_rstudio <- function(..., base_func) {
+  base_func(...)
 
   args <- split_args(...)
   plot_obj = args$first
 
-  rstudio_deferred_plots <<- append(rstudio_deferred_plots, function(chunkName, chunkCode) {
+  defplots <<- append(.GlobalEnv$rstudio_deferred_plots, function(chunkName, chunkCode) {
     options <- parse_params(chunkCode)
 
     # Is GoFigr disabled for current chunk?
     if(identical(options$gofigr_on, FALSE)) {
-      return(base::plot(...))
+      return(base_func(...))
     }
 
     figure_name <- options$gofigr_figure_name
@@ -114,8 +119,11 @@ plot_rstudio <- function(...) {
     publish(args$first, figure_name=figure_name, show=FALSE,
             input_path=rstudioapi::getSourceEditorContext()$path,
             chunk_code=chunkCode,
-            other_args=args$rest)
+            other_args=args$rest,
+            base_func=base_func)
     })
+
+  assign("rstudio_deferred_plots", defplots, .GlobalEnv)
 }
 
 
@@ -126,18 +134,18 @@ plot_rstudio <- function(...) {
 #'
 #' @return same as plot()
 #' @export
-plot_interactive <- function(...) {
+plot_interactive <- function(..., base_func) {
   args <- split_args(...)
 
   histfile <- tempfile()
   savehistory(histfile)
 
+  on.exit({ file.remove(histfile) })
   publish(args$first, figure_name="Anonymous Figure", show=TRUE,
           input_path=histfile,
           chunk_code=NULL,
-          other_args=args$rest)
-
-  file.remove(histfile)
+          other_args=args$rest,
+          base_func=base_func)
 }
 
 #' Replacement for plot in a script. Captures the plot and publishes to GoFigr.
@@ -146,33 +154,44 @@ plot_interactive <- function(...) {
 #'
 #' @return same as plot()
 #' @export
-plot_script <- function(...) {
+plot_script <- function(..., base_func) {
+  args <- split_args(...)
 
+  publish(args$first, figure_name="Anonymous Figure", show=TRUE,
+          input_path=scriptName::current_filename(),
+          chunk_code=NULL,
+          other_args=args$rest,
+          base_func=base_func)
 }
 
-gofigr_plot <- function(...) {
-  if(!is.null(knitr::current_input())) {
-    # Running in knitr
-    plot_knitr(...)
-  } else if(!interactive()) {
-    # Running in a script
-    plot_script(...)
-  } else if(interactive() && rstudioapi::isAvailable()) {
-    # Running interactively in RStudio
-    plot_rstudio(...)
-  } else if(interactive() && !rstudioapi::isAvailable()) {
-    # Running interactive outside of RStudio
-    plot_interactive(...)
-  } else {
-    warning("GoFigr could not detect the execution context. Please contact support@gofigr.io.")
-    base::plot(...)
+make_gofigr_intercept <- function(base_func, supported_classes=NULL) {
+  function(...) {
+    if(!is.null(supported_classes) && !any(class(split_args(...)$first) %in% supported_classes)) {
+      return(base_func(...))
+    }
+
+    if(!is.null(knitr::current_input())) {
+      # Running in knitr
+      plot_knitr(..., base_func=base_func)
+    } else if(!interactive()) {
+      # Running in a script
+      plot_script(..., base_func=base_func)
+    } else if(interactive() && rstudioapi::isAvailable()) {
+      # Running interactively in RStudio
+      plot_rstudio(..., base_func=base_func)
+    } else if(interactive() && !rstudioapi::isAvailable()) {
+      # Running interactive outside of RStudio
+      plot_interactive(..., base_func=base_func)
+    } else {
+      warning("GoFigr could not detect the execution context. Please contact support@gofigr.io.")
+      base_func(...)
+    }
   }
 }
 
-
 create_bare_revision <- function(client, fig, input_path) {
   sess <- sessionInfo()
-  info <- capture.output({print(sess)})
+  info <- capture.output({base::print(sess)})
 
   rev <-  gofigR::create_revision(client, fig,
                                   metadata = list(input=input_path,
@@ -213,7 +232,7 @@ capture_rds <- function(obj, name) {
 annotate <- function(rev_bare, plot_obj, figure_name,
                      source_path, chunk_code=NULL) {
   sess <- sessionInfo()
-  info <- capture.output({print(sess)})
+  info <- capture.output({base::print(sess)})
 
   # Plot object as RDS file
   data <- list(capture_rds(plot_obj,
@@ -232,7 +251,7 @@ annotate <- function(rev_bare, plot_obj, figure_name,
 }
 
 
-save_as_image <- function(format, plot_obj, other_args) {
+save_as_image <- function(format, plot_obj, other_args, base_func) {
   path <- tempfile(fileext=paste0(".", format))
   if(format == "png") {
     png(path)
@@ -249,7 +268,7 @@ save_as_image <- function(format, plot_obj, other_args) {
   }
 
   tryCatch({
-    do.call(base::plot, append(list(plot_obj), other_args))
+    do.call(base_func, append(list(plot_obj), other_args))
     dev.off()
     return(make_image_data("figure", path, format, FALSE))
   }, finally={
@@ -262,10 +281,10 @@ save_as_image <- function(format, plot_obj, other_args) {
 
 publish <- function(plot_obj, figure_name, show=TRUE,
                     input_path=NULL, chunk_code=NULL, image_formats=c("svg", "eps"),
-                    other_args=list()) {
+                    other_args=list(), base_func=base::plot) {
   show_plot <- function() {
     if(show) {
-      do.call(base::plot, append(list(plot_obj), other_args))
+      do.call(base_func, append(list(plot_obj), other_args))
     } else {
       return(NULL)
     }
@@ -278,7 +297,7 @@ publish <- function(plot_obj, figure_name, show=TRUE,
   }
 
   if(identical(gf_opts$gofigr_on, FALSE)) {
-    return(do.call(base::plot, other_args))
+    return(do.call(base_func, other_args))
   }
 
   client <- gf_opts$client
@@ -286,7 +305,7 @@ publish <- function(plot_obj, figure_name, show=TRUE,
   png_path <- tempfile(fileext=".png")
   png(png_path)
   tryCatch({
-    do.call(base::plot, append(list(plot_obj), other_args))
+    do.call(base_func, append(list(plot_obj), other_args))
   }, finally={
   dev.off()
   })
@@ -302,7 +321,7 @@ publish <- function(plot_obj, figure_name, show=TRUE,
 
   # Additional image formats
   image_data <- append(image_data, lapply(image_formats, function(fmt) {
-    save_as_image(fmt, plot_obj, other_args)
+    save_as_image(fmt, plot_obj, other_args, base_func)
   }))
   image_data <- image_data[!is.null(image_data)]
 
@@ -311,18 +330,35 @@ publish <- function(plot_obj, figure_name, show=TRUE,
   rev <- gofigR::update_revision_data(client, rev_bare, silent=TRUE, new_data=append(image_data, other_data))
   file.remove(png_path)
 
+  if(identical(gf_opts$verbose, TRUE)) {
+    cat(paste0(fig$name, " - ", rev$api_id, "\n"))
+  }
+
   show_plot()
 }
 
 
+#' Enables GoFigr support.
+#'
+#' @param analysis_api_id Analysis API ID (if analysis_name is NULL)
+#' @param analysis_name Analysis name (if analysis_api_id is NULL)
+#' @param workspace API ID of the workspace
+#' @param create_analysis if TRUE and analysis_name does not exist, it will be automatically created
+#' @param analysis_description analysis description if creating a new analysis
+#' @param watermark watermark class to use, e.g. QR_WATERMARK, LINK_WATERMARK or NO_WATERMARK
+#' @param auto_publish will publish all plots automatically if TRUE
+#' @param verbose whether to show verbose output
+#'
+#' @return named list of GoFigr options
+#' @export
 enable <- function(analysis_api_id=NULL,
                    analysis_name=NULL,
                    workspace=NULL,
                    create_analysis=TRUE,
                    analysis_description=NULL,
-                   im_options="-density 300",
                    watermark=QR_WATERMARK,
-                   auto_publish=TRUE) {
+                   auto_publish=TRUE,
+                   verbose=FALSE) {
   # Create the GoFigr client
   gf <- gofigr_client(workspace=workspace)
 
@@ -343,16 +379,20 @@ enable <- function(analysis_api_id=NULL,
     rstudioapi::unregisterChunkCallback(old_opts$rstudio_callback)
   }
 
+  assign("rstudio_deferred_plots", list(), .GlobalEnv)
+
   set_options(list(client=gf,
                    analysis=ana,
                    workspace=gf$workspace,
                    watermark=watermark,
-                   rstudio_callback=tryCatch(
+                   verbose=verbose,
+                   rstudio_callback=tryCatch( # only works in RStudio
                      {rstudioapi::registerChunkCallback(rstudio_chunk_callback)},
                      error=function(err) {NULL})))
 
   if(auto_publish) {
-    assign("plot", gofigr_plot, .GlobalEnv)
+    assign("plot", make_gofigr_intercept(base::plot), .GlobalEnv)
+    assign("print", make_gofigr_intercept(base::print, supported_classes=c("ggplot")), .GlobalEnv)
   }
 
   return(invisible(get_options()))

@@ -11,12 +11,12 @@ library(gofigR)
 library(ggplot2)
 library(plotly)
 
-#source("~/dev/gofigr_r/gofigR/R/markdown.R")
-source("~/dev/gofigr_r/gofigR/R/graphics.R")
+#source("~/dev/gofigr_r/gofigR/R/graphics.R")
 
 knitr::opts_chunk$set(echo = TRUE)
 enable(analysis_name="My first Rmd analysis 2",
-       watermark = gofigR::QR_WATERMARK)
+       watermark = gofigR::QR_WATERMARK,
+       verbose=FALSE)
 ```
 
 ## R Markdown
@@ -64,7 +64,7 @@ barplot(temperatures)
 ```{r ggplot}
 gp <- ggplot(data=pressure, mapping=aes(x=temperature, y=pressure))
 gp <- gp + geom_line()
-plot(gp)
+print(gp)
 ```
 
 ```{r plotly}
@@ -72,5 +72,5 @@ library(plotly)
 
 fig <- plot_ly(data = iris, x = ~Sepal.Length, y = ~Petal.Length)
 
-fig
+print(fig)
 ```
