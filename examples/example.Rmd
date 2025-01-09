@@ -15,8 +15,7 @@ library(plotly)
 
 knitr::opts_chunk$set(echo = TRUE)
 enable(analysis_name="My first Rmd analysis 2",
-       watermark = gofigR::QR_WATERMARK,
-       verbose=FALSE)
+       watermark = gofigR::QR_WATERMARK)
 ```
 
 ## R Markdown
@@ -42,12 +41,15 @@ You can also embed plots, for example:
 
 
 
-```{r pressure, echo=FALSE, gofigr_figure_name="My first figure"}
+```{r pressure, echo=FALSE, gofigr_figure_name="My first figure", fig.width=10, fig.height=5}
 plot(pressure, main="Pressure vs temperature")
 ```
 
 ```{r pressure2, echo=FALSE}
+print(getwd())
+png("testplot.png")
 plot(pressure)
+invisible(dev.off())
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
@@ -57,14 +59,13 @@ temperatures <- c(22, 27, 26, 24, 23, 26, 28)
 
 # bar plot of temperatures vector
 barplot(temperatures)
-
-#plot(result)
 ```
 
 ```{r ggplot}
+print(dev.list())
 gp <- ggplot(data=pressure, mapping=aes(x=temperature, y=pressure))
 gp <- gp + geom_line()
-print(gp)
+plot(gp)
 ```
 
 ```{r plotly}

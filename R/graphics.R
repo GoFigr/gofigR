@@ -1,7 +1,17 @@
+#' Sets GoFigr options.
+#'
+#' @param options
+#'
+#' @return NA
+#' @export
 set_options <- function(options) {
   assign("gofigr_options", options, .GlobalEnv)
 }
 
+#' Gets configured GoFigr options.
+#'
+#' @return options
+#' @export
 get_options <- function() {
   return(.GlobalEnv[["gofigr_options"]])
 }
@@ -15,13 +25,23 @@ infer_input_path <- function() {
 }
 
 rstudio_chunk_callback <- function(chunkName, chunkCode) {
+  opts <- get_options()
+  if(opts$debug) {
+    cat(paste0("RStudio callback for chunk ", chunkName,
+               ". Deferred plots: ", length(opts$deferred_plots), "\n"))
+  }
   tryCatch({
     chunkCode <- textutils::HTMLdecode(chunkCode)
-    lapply(.GlobalEnv$rstudio_deferred_plots, function(defplot) {
+    lapply(opts$deferred_plots, function(defplot) {
       defplot(chunkName, chunkCode)
     })
-  }, finally=function() {
-    assign("rstudio_deferred_plots", list(), .GlobalEnv)
+  }, error=function(cond) {
+    cat(paste0(cond, "\n"), file=stderr())
+  }, finally={
+    if(opts$debug) {
+      cat("Resetting deferred\n")
+    }
+    opts$deferred_plots <- list()
   })
   return(list())
 }
@@ -50,7 +70,7 @@ split_args <- function(...) {
 #' @return same as plot()
 #' @export
 plot_knitr <- function(..., base_func) {
-  options <- knitr::opts_current
+  options <- knitr::opts_current$get()
 
   # Is GoFigr disabled for current chunk?
   if(identical(options$gofigr_on, FALSE)) {
@@ -61,7 +81,7 @@ plot_knitr <- function(..., base_func) {
 
   figure_name <- options$gofigr_figure_name
   if(is.null(figure_name)) {
-    figure_name <- options$get("label")
+    figure_name <- options$label
   }
 
   if(is.null(figure_name)) {
@@ -71,8 +91,9 @@ plot_knitr <- function(..., base_func) {
 
   publish(args$first, figure_name=figure_name, show=TRUE,
           input_path=knitr::current_input(),
-          chunk_code=paste0(options$get("code"), collapse="\n"),
-          other_args=args$rest)
+          chunk_code=paste0(options$code, collapse="\n"),
+          other_args=args$rest,
+          options=options)
 }
 
 parse_params <- function(chunk, patterns=all_patterns$md) {
@@ -97,8 +118,9 @@ plot_rstudio <- function(..., base_func) {
 
   args <- split_args(...)
   plot_obj = args$first
+  opts <- get_options()
 
-  defplots <<- append(.GlobalEnv$rstudio_deferred_plots, function(chunkName, chunkCode) {
+  opts$deferred_plots <- append(opts$deferred_plots, function(chunkName, chunkCode) {
     options <- parse_params(chunkCode)
 
     # Is GoFigr disabled for current chunk?
@@ -120,10 +142,10 @@ plot_rstudio <- function(..., base_func) {
             input_path=rstudioapi::getSourceEditorContext()$path,
             chunk_code=chunkCode,
             other_args=args$rest,
-            base_func=base_func)
+            base_func=base_func,
+            options=options)
     })
 
-  assign("rstudio_deferred_plots", defplots, .GlobalEnv)
 }
 
 
@@ -251,37 +273,57 @@ annotate <- function(rev_bare, plot_obj, figure_name,
 }
 
 
-save_as_image <- function(format, plot_obj, other_args, base_func) {
+save_as_image_file <- function(format, plot_obj, other_args, base_func, options) {
+  width <- default_if_null(options$fig.width, 7)
+  height <- default_if_null(options$fig.height, 7)
+  dpi <- default_if_null(options$fig.dpi, 72)
+
   path <- tempfile(fileext=paste0(".", format))
   if(format == "png") {
-    png(path)
+    newDevice <- function(...) { png(path, width=width * dpi, height=height * dpi) }
   } else if(format == "svg") {
-    svg(path)
+    newDevice <- function(...) { svg(path, width=width, height=height) }
   } else if(format == "pdf") {
-    pdf(path)
+    newDevice <- function(...) { pdf(path, width=width, height=heigh) }
   } else if(format == "eps") {
-    setEPS()
-    postscript(path)
+    newDevice <- function(...) {
+      setEPS()
+      postscript(path, width=width, height=height)
+    }
   } else {
     warning(paste0("Unsupported image format: ", format))
     return(NULL)
   }
 
+  do_plot <- function() { do.call(base_func, append(list(plot_obj), other_args)) }
+
+  # Plot to GoFigr's device
+  device_id <- NULL
   tryCatch({
-    do.call(base_func, append(list(plot_obj), other_args))
+    device <- newDevice()
+    device_id <- dev.cur()
+    force(do_plot())
     dev.off()
-    return(make_image_data("figure", path, format, FALSE))
   }, finally={
-    if(file.exists(path)) {
-      file.remove(path)
+    if(dev.cur() == device_id) {
+      dev.off()
     }
   })
+  return(path)
+}
+
+save_as_image <- function(format, plot_obj, other_args, base_func, options) {
+  path <- save_as_image_file(format, plot_obj, other_args, base_func, options)
+  img_obj <- make_image_data("figure", path, format, FALSE)
+  file.remove(path)
+  return(img_obj)
 }
 
 
 publish <- function(plot_obj, figure_name, show=TRUE,
                     input_path=NULL, chunk_code=NULL, image_formats=c("svg", "eps"),
-                    other_args=list(), base_func=base::plot) {
+                    other_args=list(), base_func=base::plot,
+                    options=list()) {
   show_plot <- function() {
     if(show) {
       do.call(base_func, append(list(plot_obj), other_args))
@@ -293,22 +335,20 @@ publish <- function(plot_obj, figure_name, show=TRUE,
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
     warning("GoFigr hasn't been configured. Did you call gofigR::enable()?")
-    return(show_plot())
+    if(show) {
+      return(invisible(show_plot()))
+    } else {
+      return(invisible(NULL))
+    }
   }
 
-  if(identical(gf_opts$gofigr_on, FALSE)) {
-    return(do.call(base_func, other_args))
+  if(gf_opts$debug) {
+    print(paste0("Starting publish. Device: ", paste0(names(dev.list()), collapse=", ")))
   }
 
   client <- gf_opts$client
 
-  png_path <- tempfile(fileext=".png")
-  png(png_path)
-  tryCatch({
-    do.call(base_func, append(list(plot_obj), other_args))
-  }, finally={
-  dev.off()
-  })
+  png_path <- save_as_image_file("png", plot_obj, other_args, base_func, options)
 
   fig <- gofigR::find_figure(gf_opts$client, gf_opts$analysis, figure_name, create=TRUE)
 
@@ -321,7 +361,7 @@ publish <- function(plot_obj, figure_name, show=TRUE,
 
   # Additional image formats
   image_data <- append(image_data, lapply(image_formats, function(fmt) {
-    save_as_image(fmt, plot_obj, other_args, base_func)
+    save_as_image(fmt, plot_obj, other_args, base_func, options)
   }))
   image_data <- image_data[!is.null(image_data)]
 
@@ -330,11 +370,15 @@ publish <- function(plot_obj, figure_name, show=TRUE,
   rev <- gofigR::update_revision_data(client, rev_bare, silent=TRUE, new_data=append(image_data, other_data))
   file.remove(png_path)
 
-  if(identical(gf_opts$verbose, TRUE)) {
-    cat(paste0(fig$name, " - ", rev$api_id, "\n"))
+  if(gf_opts$verbose) {
+    cat(paste0("\"", fig$name, "\" at https://app.gofigr.io/r/", rev$api_id, "\n"))
   }
 
-  show_plot()
+  res <- show_plot()
+  if(gf_opts$debug) {
+    print(paste0("Ending publish. Device: ", paste0(names(dev.list()), collapse=", ")))
+  }
+  return(invisible(res))
 }
 
 
@@ -348,6 +392,7 @@ publish <- function(plot_obj, figure_name, show=TRUE,
 #' @param watermark watermark class to use, e.g. QR_WATERMARK, LINK_WATERMARK or NO_WATERMARK
 #' @param auto_publish will publish all plots automatically if TRUE
 #' @param verbose whether to show verbose output
+#' @param debug whether to show debugging information
 #'
 #' @return named list of GoFigr options
 #' @export
@@ -358,9 +403,10 @@ enable <- function(analysis_api_id=NULL,
                    analysis_description=NULL,
                    watermark=QR_WATERMARK,
                    auto_publish=TRUE,
-                   verbose=FALSE) {
+                   verbose=FALSE,
+                   debug=FALSE) {
   # Create the GoFigr client
-  gf <- gofigr_client(workspace=workspace)
+  gf <- gofigr_client(workspace=workspace, verbose=verbose)
 
   # Find the analysis
   if(!is.null(analysis_api_id)) {
@@ -376,22 +422,33 @@ enable <- function(analysis_api_id=NULL,
 
   old_opts <- get_options()
   if(!is.null(old_opts) && !is.null(old_opts$rstudio_callback)) {
+    print(old_opts$rstudio_callback)
     rstudioapi::unregisterChunkCallback(old_opts$rstudio_callback)
   }
 
-  assign("rstudio_deferred_plots", list(), .GlobalEnv)
+  set_options(structure(local({
+    client <- gf
+    analysis <- ana
+    workspace <- gf$workspace
+    watermark <- watermark
+    verbose <- verbose
+    debug <- debug
+    deferred_plots <- list()
+    rstudio_callback <- tryCatch( # only works in RStudio
+      {
+        rstudioapi::registerChunkCallback(rstudio_chunk_callback)
+      },
+      error=function(err) {
+        print(err)
+        return(NULL)
+      })
 
-  set_options(list(client=gf,
-                   analysis=ana,
-                   workspace=gf$workspace,
-                   watermark=watermark,
-                   verbose=verbose,
-                   rstudio_callback=tryCatch( # only works in RStudio
-                     {rstudioapi::registerChunkCallback(rstudio_chunk_callback)},
-                     error=function(err) {NULL})))
+    return(environment())
+  })))
 
   if(auto_publish) {
     assign("plot", make_gofigr_intercept(base::plot), .GlobalEnv)
+    assign("barplot", make_gofigr_intercept(graphics::barplot), .GlobalEnv)
     assign("print", make_gofigr_intercept(base::print, supported_classes=c("ggplot")), .GlobalEnv)
   }
 
