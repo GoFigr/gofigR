@@ -93,6 +93,7 @@ plot_knitr <- function(..., base_func) {
           input_path=knitr::current_input(),
           chunk_code=paste0(options$code, collapse="\n"),
           other_args=args$rest,
+          base_func=base_func,
           options=options)
 }
 
@@ -422,7 +423,6 @@ enable <- function(analysis_api_id=NULL,
 
   old_opts <- get_options()
   if(!is.null(old_opts) && !is.null(old_opts$rstudio_callback)) {
-    print(old_opts$rstudio_callback)
     rstudioapi::unregisterChunkCallback(old_opts$rstudio_callback)
   }
 

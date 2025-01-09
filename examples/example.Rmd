@@ -46,7 +46,6 @@ plot(pressure, main="Pressure vs temperature")
 ```
 
 ```{r pressure2, echo=FALSE}
-print(getwd())
 png("testplot.png")
 plot(pressure)
 invisible(dev.off())
