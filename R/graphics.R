@@ -36,8 +36,8 @@ suppress <- function(expr) {
 #' plot(pressure, main="Pressure vs temperature")
 #' text(50, 50, "My pretty figure")
 #' }, pressure)
-capture <- function(expr, data=NULL) {
-  expr_func <- shiny::exprToFunction(expr)
+capture <- function(expr, data=NULL, env=parent.frame()) {
+  expr_func <- shiny::exprToFunction(expr, env=env)
 
   wrapper <- intercept(function(data) {
     suppress(expr_func())
