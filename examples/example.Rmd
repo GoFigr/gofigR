@@ -18,7 +18,7 @@ library(gplots)
 knitr::opts_chunk$set(echo = TRUE)
 enable(analysis_name="My first Rmd analysis 2",
        watermark = gofigR::QR_WATERMARK,
-       debug=FALSE)
+       debug=TRUE)
 ```
 
 ```{r html_test}
@@ -38,13 +38,18 @@ You can also embed plots, for example:
 
 
 ```{r include_image}
-plot(pressure)
-plot(pressure, main="Another one")
+gofigR::capture({
+  base::plot(pressure)
+  base::plot(pressure, main="Another one")
+}, pressure)
 ```
 
 
 ```{r pressure, gofigr_figure_name="My first figure", fig.width=10, fig.height=5, gofigr_on=TRUE}
-plot(pressure, main="Pressure vs temperature")
+gofigR::capture({
+  plot(pressure, main="Pressure vs temperature")
+  text(50, 50, "My pretty figure")
+}, NULL)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

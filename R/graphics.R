@@ -10,6 +10,41 @@ intercept_off <- function() {
   assign("gofigr_intercept_on", FALSE, .GlobalEnv)
 }
 
+suppress <- function(expr) {
+  if(!is_intercept_on()) {
+    return(expr)
+  }
+
+ tryCatch({
+    intercept_off()
+    force(expr)
+   }, finally={intercept_on()})
+}
+
+#' Captures output of an expression and publishes it to GoFigr. This function
+#' is helpful if you have multiple function calls which incrementally build a
+#' single figure.
+#'
+#' @param expr expression which generates your figure
+#' @param data input data to publish with the figure
+#'
+#' @return result of evaluating your expression
+#' @export
+#'
+#' @examples
+#' gofigR::capture({
+#' plot(pressure, main="Pressure vs temperature")
+#' text(50, 50, "My pretty figure")
+#' }, pressure)
+capture <- function(expr, data=NULL) {
+  expr_func <- shiny::exprToFunction(expr)
+
+  wrapper <- intercept(function(data) {
+    suppress(expr_func())
+  })
+  wrapper(data)
+}
+
 #' Sets GoFigr options.
 #'
 #' @param options

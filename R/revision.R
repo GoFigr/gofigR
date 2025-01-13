@@ -28,7 +28,7 @@ get_revision_url <- function(rev) {
     return(NULL)
   }
 
-  paste0(APP_URL, "/", rev$api_id)
+  paste0(APP_URL, "/r/", rev$api_id)
 }
 
 #' Creates a new revision

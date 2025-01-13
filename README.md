@@ -4,7 +4,7 @@ gofigR is the R client for https://gofigr.io, a zero-effort reproducibility
 engine.
 
 ## Compatibility
-gofigR integrates with knitr and supports both HTML and PDF output. We tested 
+gofigR integrates with R markdown (Rmd), both within `knitr` and interactive sessions in RStudio. We tested 
 with R 4.3.2 but any reasonably recent version should work.
 
 ## Installation
@@ -55,7 +55,7 @@ Configuration saved to /Users/maciej/.gofigr. Happy analysis!
 
 ## Usage
 
-To enable GoFigr, simply call `enable_knitr` in your setup chunk. `analysis_name` specifies the analysis
+To enable GoFigr, simply call `enable` in your setup chunk. `analysis_name` specifies the analysis
 under which all figures will be published (it will be created automatically
 if it doesn't exist).
 
@@ -63,7 +63,7 @@ if it doesn't exist).
 ```{r setup, include=FALSE}
 library(gofigR)
 
-enable_knitr(analysis_name="My first Rmd analysis")
+gofigR::enable(analysis_name="My first Rmd analysis")
 ```
 ````
 
@@ -72,7 +72,6 @@ through chunk options:
 
 * `gofigr_figure_name`: manually specify the name of the figure
 * `gofigr_on`: set to FALSE to disable GoFigr within a chunk
-* `gofigr_im_options`: custom ImageMagick arguments for converting PDF to PNG. Defaults to `"-density 300"`.
 
 For example:
 
@@ -82,11 +81,15 @@ plot(pressure)
 ```
   
 ```{r pressure2, echo=FALSE, gofigr_on=FALSE}
+# Won't be published
 plot(pressure)
 ```
 ````
 
-## Limitations
+## Publishing other plot types
+
+
+## Interactive use
 
 gofigR currently only works when knit with `knitr`. Interactive sessions
 within RStudio are not currently supported (but coming soon!).
