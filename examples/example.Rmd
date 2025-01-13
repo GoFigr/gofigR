@@ -11,27 +11,14 @@ library(gofigR)
 library(ggplot2)
 library(plotly)
 library(evaluate)
-
-#source("~/dev/gofigr_r/gofigR/R/graphics.R")
-
-my_render <- function(x, options) {
-  print("Render!")
-  print(x) 
-  print(options)
-}
-
-my_evaluate <- function(...) {
-  res <- evaluate::evaluate(...)
-  print(res)
-  saveRDS(res, "res.RDS")
-  return(res)
-}
+library(stats)
+library(gplots)
 
 
 knitr::opts_chunk$set(echo = TRUE)
 enable(analysis_name="My first Rmd analysis 2",
        watermark = gofigR::QR_WATERMARK,
-       debug=TRUE)
+       debug=FALSE)
 ```
 
 ```{r html_test}
@@ -74,6 +61,13 @@ gp <- ggplot(data=pressure, mapping=aes(x=temperature, y=pressure))
 gp <- gp + geom_line()
 plot(gp)
 ```
+```{r heatmap}
+mat <- matrix(rnorm(1200), ncol=6)
+
+# heatmap with the defaults parameters
+heatmap.2(x=mat)
+```
+
 
 ```{r plotly}
 library(plotly)

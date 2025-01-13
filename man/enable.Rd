@@ -13,7 +13,8 @@ enable(
   watermark = QR_WATERMARK,
   auto_publish = TRUE,
   verbose = FALSE,
-  debug = FALSE
+  debug = FALSE,
+  show = "watermark"
 )
 }
 \arguments{
@@ -34,6 +35,10 @@ enable(
 \item{verbose}{whether to show verbose output}
 
 \item{debug}{whether to show debugging information}
+
+\item{show}{which figure to display in the document: original, watermark, or hide. Note that this setting \
+only affects the display and doesn't change what gets published: e.g. even if you choose to display \
+the original figure, the watermarked version will still be published to GoFigr.}
 }
 \value{
 named list of GoFigr options

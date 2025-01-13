@@ -17,6 +17,20 @@ get_revision <- function(gf, api_id) {
   response_to_JSON(gofigr_GET(gf, paste0("revision/", api_id)))
 }
 
+#' Gets the full URL for a revision
+#'
+#' @param rev revision object
+#'
+#' @return URL, a string
+#' @export
+get_revision_url <- function(rev) {
+  if(is.null(rev) || is.null(rev$api_id)) {
+    return(NULL)
+  }
+
+  paste0(APP_URL, "/", rev$api_id)
+}
+
 #' Creates a new revision
 #'
 #' @param gf GoFigr client

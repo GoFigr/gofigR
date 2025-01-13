@@ -1,3 +1,15 @@
+is_intercept_on <- function() {
+  return(.GlobalEnv[["gofigr_intercept_on"]])
+}
+
+intercept_on <- function() {
+  assign("gofigr_intercept_on", TRUE, .GlobalEnv)
+}
+
+intercept_off <- function() {
+  assign("gofigr_intercept_on", FALSE, .GlobalEnv)
+}
+
 #' Sets GoFigr options.
 #'
 #' @param options
@@ -209,7 +221,9 @@ plot_interactive <- function(..., base_func) {
           input_path=histfile,
           chunk_code=NULL,
           other_args=args$rest,
-          base_func=base_func)
+          base_func=base_func,
+          show="original",
+          revision_callback=print_revision)
 }
 
 #' Replacement for plot in a script. Captures the plot and publishes to GoFigr.
@@ -225,32 +239,65 @@ plot_script <- function(..., base_func) {
           input_path=scriptName::current_filename(),
           chunk_code=NULL,
           other_args=args$rest,
-          base_func=base_func)
+          base_func=base_func,
+          show="original",
+          revision_callback=print_revision)
 }
 
-make_gofigr_intercept <- function(base_func, supported_classes=NULL) {
+print_revision <- function(rev, ...) {
+  cat(paste0(get_revision_url(rev), "\n"))
+}
+
+#' Wraps a plotting function (e.g. heatmap.2) so that its output is intercepted
+#' by GoFigr.
+#'
+#' @param base_func function to intercept
+#' @param supported_classes calls will be intercepted *only if* the first argument is an \
+#' instance of any of these classes
+#'
+#' @return intercepted function
+#' @export
+#'
+#' @examples
+#' heatmap.2 <- intercept(gplots::heatmap.2)
+intercept <- function(base_func, supported_classes=NULL) {
   function(...) {
+    if(!is_intercept_on()) {
+      return(base_func(...))
+    }
+
     # Check if the first argument is a plot we support. If not, defer to base_func
     if(!is.null(supported_classes) && !any(class(split_args(...)$first) %in% supported_classes)) {
       return(base_func(...))
     }
 
-    if(!is.null(knitr::current_input())) {
-      # Running in knitr
-      plot_knitr(..., base_func=base_func)
-    } else if(!interactive()) {
-      # Running in a script
-      plot_script(..., base_func=base_func)
-    } else if(interactive() && rstudioapi::isAvailable()) {
-      # Running interactively in RStudio
-      plot_rstudio(..., base_func=base_func)
-    } else if(interactive() && !rstudioapi::isAvailable()) {
-      # Running interactive outside of RStudio
-      plot_interactive(..., base_func=base_func)
-    } else {
-      warning("GoFigr could not detect the execution context. Please contact support@gofigr.io.")
-      base_func(...)
-    }
+    tryCatch({
+      intercept_off()
+
+      if(!is.null(knitr::current_input())) {
+        # Running in knitr
+        plot_knitr(..., base_func=base_func)
+      } else if(!interactive()) {
+        # Running in a script
+        plot_script(..., base_func=base_func)
+      } else if(interactive() && rstudioapi::isAvailable()) {
+        # Running interactively in RStudio
+        ext <- base::tolower(tools::file_ext(rstudioapi::getSourceEditorContext()$path))
+        if(ext == "rmd") {
+          plot_rstudio(..., base_func=base_func)
+        } else {
+          plot_interactive(..., base_func=base_func)
+        }
+      } else if(interactive() && !rstudioapi::isAvailable()) {
+        # Running interactive outside of RStudio
+        plot_interactive(..., base_func=base_func)
+      } else {
+        warning("GoFigr could not detect the execution context. Please contact support@gofigr.io.")
+        base_func(...)
+      }
+    }, finally={
+      intercept_on()
+    })
   }
 }
 
@@ -433,7 +480,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
   file.remove(png_path)
 
   if(gf_opts$verbose) {
-    cat(paste0("\"", fig$name, "\" at ", APP_URL, "/", rev$api_id, "\n"))
+    cat(paste0("\"", fig$name, "\" at ", get_revision_url(rev), "\n"))
   }
 
   res <- show_plot(watermark_data)
@@ -450,6 +497,19 @@ publish <- function(plot_obj, figure_name, show=NULL,
   }
 
   return(res)
+}
+
+intercept_base <- function() {
+  assign("plot", intercept(base::plot), .GlobalEnv)
+  assign("barplot", intercept(graphics::barplot), .GlobalEnv)
+  assign("print", intercept(base::print, supported_classes=c("ggplot")), .GlobalEnv)
+}
+
+intercept_gplots <- function() {
+  ns <- getNamespace("gplots")
+  sapply(c("venn", "heatmap.2", "hist2d"), function(name) {
+    assign(name, intercept(ns[[name]]), .GlobalEnv)
+  })
 }
 
 
@@ -499,7 +559,9 @@ enable <- function(analysis_api_id=NULL,
 
   old_opts <- get_options()
   if(!is.null(old_opts) && !is.null(old_opts$rstudio_callback)) {
-    rstudioapi::unregisterChunkCallback(old_opts$rstudio_callback)
+    tryCatch({
+      rstudioapi::unregisterChunkCallback(old_opts$rstudio_callback)
+    })
   }
 
   set_options(structure(local({
@@ -523,10 +585,15 @@ enable <- function(analysis_api_id=NULL,
     return(environment())
   })))
 
+  intercept_on()
+
   if(auto_publish) {
-    assign("plot", make_gofigr_intercept(base::plot), .GlobalEnv)
-    assign("barplot", make_gofigr_intercept(graphics::barplot), .GlobalEnv)
-    assign("print", make_gofigr_intercept(base::print, supported_classes=c("ggplot")), .GlobalEnv)
+    intercept_base()
+
+    pkgs <- rownames(installed.packages())
+    if("gplots" %in% pkgs) {
+      intercept_gplots()
+    }
   }
 
   return(invisible(get_options()))
