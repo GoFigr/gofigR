@@ -6,16 +6,36 @@ output: html_document
 
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=TRUE}
 library(gofigR)
 library(ggplot2)
 library(plotly)
+library(evaluate)
 
 #source("~/dev/gofigr_r/gofigR/R/graphics.R")
 
+my_render <- function(x, options) {
+  print("Render!")
+  print(x) 
+  print(options)
+}
+
+my_evaluate <- function(...) {
+  res <- evaluate::evaluate(...)
+  print(res)
+  saveRDS(res, "res.RDS")
+  return(res)
+}
+
+
 knitr::opts_chunk$set(echo = TRUE)
 enable(analysis_name="My first Rmd analysis 2",
-       watermark = gofigR::QR_WATERMARK)
+       watermark = gofigR::QR_WATERMARK,
+       debug=TRUE)
+```
+
+```{r html_test}
+print(knitr::asis_output("<img src='https://gofigr.io/wp-content/uploads/2023/03/cropped-GoFigr-500-%C3%97-200-px-1500-%C3%97-340-px-1-2-300x78.png'></img>"))
 ```
 
 ## R Markdown
@@ -24,36 +44,25 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-#summary(cars)
-
-test <- function(...) {
-  print(list(...)[1])
-}
-
-test(list(c(1, 2), c(3, 4)))
-```
-
 
 ## Including Plots
 
 You can also embed plots, for example:
 
 
-
-```{r pressure, echo=FALSE, gofigr_figure_name="My first figure", fig.width=10, fig.height=5}
-plot(pressure, main="Pressure vs temperature")
+```{r include_image}
+plot(pressure)
+plot(pressure, main="Another one")
 ```
 
-```{r pressure2, echo=FALSE}
-png("testplot.png")
-plot(pressure)
-invisible(dev.off())
+
+```{r pressure, gofigr_figure_name="My first figure", fig.width=10, fig.height=5, gofigr_on=TRUE}
+plot(pressure, main="Pressure vs temperature")
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
-```{r barplot}
+```{r barplot, gofigr_on=FALSE}
 temperatures <- c(22, 27, 26, 24, 23, 26, 28)
 
 # bar plot of temperatures vector
@@ -61,7 +70,6 @@ barplot(temperatures)
 ```
 
 ```{r ggplot}
-print(dev.list())
 gp <- ggplot(data=pressure, mapping=aes(x=temperature, y=pressure))
 gp <- gp + geom_line()
 plot(gp)

@@ -94,6 +94,14 @@ make_image_data <- function(name, file_or_raw, format, is_watermarked,
                        metadata=metadata, data=data))
 }
 
+image_to_html <- function(data) {
+  contents <- base64encode(data$data)
+  return(paste0("<img src=\"",
+                "data:image;base64,",
+                contents,
+                "\"/>"))
+}
+
 #' Creates a GoFigr data object storing file data
 #'
 #' @param name name of this file

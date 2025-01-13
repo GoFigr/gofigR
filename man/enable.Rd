@@ -12,7 +12,8 @@ enable(
   analysis_description = NULL,
   watermark = QR_WATERMARK,
   auto_publish = TRUE,
-  verbose = FALSE
+  verbose = FALSE,
+  debug = FALSE
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ enable(
 \item{auto_publish}{will publish all plots automatically if TRUE}
 
 \item{verbose}{whether to show verbose output}
+
+\item{debug}{whether to show debugging information}
 }
 \value{
 named list of GoFigr options

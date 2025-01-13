@@ -30,10 +30,13 @@ rstudio_chunk_callback <- function(chunkName, chunkCode) {
     cat(paste0("RStudio callback for chunk ", chunkName,
                ". Deferred plots: ", length(opts$deferred_plots), "\n"))
   }
+
+  images <- list()
+
   tryCatch({
     chunkCode <- textutils::HTMLdecode(chunkCode)
     lapply(opts$deferred_plots, function(defplot) {
-      defplot(chunkName, chunkCode)
+      images <<- append(images, list(defplot(chunkName, chunkCode)))
     })
   }, error=function(cond) {
     cat(paste0(cond, "\n"), file=stderr())
@@ -43,7 +46,19 @@ rstudio_chunk_callback <- function(chunkName, chunkCode) {
     }
     opts$deferred_plots <- list()
   })
-  return(list())
+
+  filtered_images <- Filter(function(img) {"gofigrdata" %in% class(img)},
+                            images)
+
+  if(length(filtered_images) == 0) {
+    return(list())
+  } else {
+  return(list(html=do.call(paste0, lapply(filtered_images, function(img) {
+    img_elt <- image_to_html(img)
+    return(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
+                  img_elt, "</div>"))
+    }))))
+  }
 }
 
 split_args <- function(...) {
@@ -89,7 +104,7 @@ plot_knitr <- function(..., base_func) {
     warning("Your figure lacks a name and will be published as Anonymous Figure.")
   }
 
-  publish(args$first, figure_name=figure_name, show=TRUE,
+  publish(args$first, figure_name=figure_name,
           input_path=knitr::current_input(),
           chunk_code=paste0(options$code, collapse="\n"),
           other_args=args$rest,
@@ -126,7 +141,7 @@ plot_rstudio <- function(..., base_func) {
 
     # Is GoFigr disabled for current chunk?
     if(identical(options$gofigr_on, FALSE)) {
-      return(base_func(...))
+      return(NULL)
     }
 
     figure_name <- options$gofigr_figure_name
@@ -139,18 +154,44 @@ plot_rstudio <- function(..., base_func) {
       warning("Your figure lacks a name and will be published as Anonymous Figure.")
     }
 
-    publish(args$first, figure_name=figure_name, show=FALSE,
+    result <- NULL
+    revision_callback <- function(revision, image_data, ...) {
+      wm <- base::Filter(function(im) {
+           tolower(im$metadata$format) == "png" && im$metadata$is_watermarked
+         }, image_data)
+
+      non_wm <- Filter(function(im) {
+        tolower(im$metadata$format) == "png" && !im$metadata$is_watermarked
+      }, image_data)
+
+      # Figure out which image to show
+      if(opts$show == "hide") {
+        result <<- NULL
+      } else if(opts$show == "original") {
+        result <<- if(length(non_wm) > 0) non_wm[[1]] else NULL
+      } else if(opts$show == "watermark") {
+        result <<- if(length(wm) > 0) wm[[1]] else NULL
+      } else {
+        stop(paste0("Invalid get_options()$show value: ", opts$show))
+      }
+    }
+
+    publish(args$first, figure_name=figure_name,
             input_path=rstudioapi::getSourceEditorContext()$path,
             chunk_code=chunkCode,
             other_args=args$rest,
             base_func=base_func,
-            options=options)
+            options=options,
+            show="hide",
+            revision_callback = revision_callback)
+
+    return(result)
     })
 
 }
 
 
-#' Replacement for plot in an interactive session outside of RStudio.
+#' Replacement for plot in an interactive session outside of RStudio (e.g. terminal).
 #' Captures the plot and publishes to GoFigr.
 #'
 #' @param ... same as plot()
@@ -163,8 +204,8 @@ plot_interactive <- function(..., base_func) {
   histfile <- tempfile()
   savehistory(histfile)
 
-  on.exit({ file.remove(histfile) })
-  publish(args$first, figure_name="Anonymous Figure", show=TRUE,
+  on.exit({ file.remove(histfile) }, add=TRUE)
+  publish(args$first, figure_name="Anonymous Figure",
           input_path=histfile,
           chunk_code=NULL,
           other_args=args$rest,
@@ -180,7 +221,7 @@ plot_interactive <- function(..., base_func) {
 plot_script <- function(..., base_func) {
   args <- split_args(...)
 
-  publish(args$first, figure_name="Anonymous Figure", show=TRUE,
+  publish(args$first, figure_name="Anonymous Figure",
           input_path=scriptName::current_filename(),
           chunk_code=NULL,
           other_args=args$rest,
@@ -189,6 +230,7 @@ plot_script <- function(..., base_func) {
 
 make_gofigr_intercept <- function(base_func, supported_classes=NULL) {
   function(...) {
+    # Check if the first argument is a plot we support. If not, defer to base_func
     if(!is.null(supported_classes) && !any(class(split_args(...)$first) %in% supported_classes)) {
       return(base_func(...))
     }
@@ -212,7 +254,7 @@ make_gofigr_intercept <- function(base_func, supported_classes=NULL) {
   }
 }
 
-create_bare_revision <- function(client, fig, input_path) {
+create_bare_revision <- function(client, fig, input_path, options) {
   sess <- sessionInfo()
   info <- capture.output({base::print(sess)})
 
@@ -221,7 +263,8 @@ create_bare_revision <- function(client, fig, input_path) {
                                                   `getwd`=getwd(),
                                                   `R version`=paste0(info[[1]]),
                                                   `R details`=sess$R.version,
-                                                  `Sys.info()`=as.list(Sys.info())))
+                                                  `Sys.info()`=as.list(Sys.info()),
+                                                  `options`=do.call(list, options)))
 
   return(rev)
 }
@@ -236,9 +279,10 @@ apply_watermark <- function(rev_bare, png_path, gf_opts) {
 
     image_destroy(primary_img)
     image_destroy(watermarked)
-    return(list(make_image_data("figure", watermarked_path, "png", TRUE)))
+    return(list(data_object=list(make_image_data("figure", watermarked_path, "png", TRUE)),
+                png_path=watermarked_path))
   } else {
-    return(list())
+    return(NULL)
   }
 }
 
@@ -276,12 +320,14 @@ annotate <- function(rev_bare, plot_obj, figure_name,
 
 save_as_image_file <- function(format, plot_obj, other_args, base_func, options) {
   width <- default_if_null(options$fig.width, 7)
-  height <- default_if_null(options$fig.height, 7)
-  dpi <- default_if_null(options$fig.dpi, 72)
+  height <- default_if_null(options$fig.height, 5)
+  dpi <- default_if_null(options$fig.dpi, default_if_null(options$dpi, 72))
 
   path <- tempfile(fileext=paste0(".", format))
   if(format == "png") {
-    newDevice <- function(...) { png(path, width=width * dpi, height=height * dpi) }
+    newDevice <- function(...) { png(path,
+                                     width=default_if_null(options$out.width.px, width * dpi),
+                                     height=default_if_null(options$out.height.px, height * dpi)) }
   } else if(format == "svg") {
     newDevice <- function(...) { svg(path, width=width, height=height) }
   } else if(format == "pdf") {
@@ -320,16 +366,23 @@ save_as_image <- function(format, plot_obj, other_args, base_func, options) {
   return(img_obj)
 }
 
+check_show_setting <- function(show) {
+  if(is.null(show) || !show %in% list("watermark", "original", "hide")) {
+    stop(paste0("Valid show values are watermark, original, or hide, but you passed: ", show))
+  }
+}
 
-publish <- function(plot_obj, figure_name, show=TRUE,
+publish <- function(plot_obj, figure_name, show=NULL,
                     input_path=NULL, chunk_code=NULL, image_formats=c("svg", "eps"),
                     other_args=list(), base_func=base::plot,
-                    options=list()) {
-  show_plot <- function() {
-    if(show) {
+                    options=list(), revision_callback=NULL) {
+  show_plot <- function(watermark_data) {
+    if(show == "original" || is.null(watermark_data)) {
       do.call(base_func, append(list(plot_obj), other_args))
+    } else if(show == "watermark") {
+      return(knitr::include_graphics(watermark_data$png_path))
     } else {
-      return(NULL)
+      return(invisible(NULL))
     }
   }
 
@@ -344,8 +397,13 @@ publish <- function(plot_obj, figure_name, show=TRUE,
   }
 
   if(gf_opts$debug) {
-    print(paste0("Starting publish. Device: ", paste0(names(dev.list()), collapse=", ")))
+    print(paste0("Starting publish. Devices: ", paste0(names(dev.list()), collapse=", ")))
   }
+
+  if(is.null(show)) {
+    show <- gf_opts$show
+  }
+  check_show_setting(show)
 
   client <- gf_opts$client
 
@@ -354,11 +412,14 @@ publish <- function(plot_obj, figure_name, show=TRUE,
   fig <- gofigR::find_figure(gf_opts$client, gf_opts$analysis, figure_name, create=TRUE)
 
   # Create a bare revision to get API ID
-  rev_bare <- create_bare_revision(client, fig, input_path)
+  rev_bare <- create_bare_revision(client, fig, input_path, options)
 
   # Now that we have an API ID, apply the watermark
   image_data <- list(make_image_data("figure", png_path, "png", FALSE))
-  image_data <- append(image_data, apply_watermark(rev_bare, png_path, gf_opts))
+  watermark_data <- apply_watermark(rev_bare, png_path, gf_opts)
+  if(!is.null(watermark_data)) {
+    image_data <- append(image_data, watermark_data$data_object)
+  }
 
   # Additional image formats
   image_data <- append(image_data, lapply(image_formats, function(fmt) {
@@ -372,14 +433,23 @@ publish <- function(plot_obj, figure_name, show=TRUE,
   file.remove(png_path)
 
   if(gf_opts$verbose) {
-    cat(paste0("\"", fig$name, "\" at https://app.gofigr.io/r/", rev$api_id, "\n"))
+    cat(paste0("\"", fig$name, "\" at ", APP_URL, "/", rev$api_id, "\n"))
   }
 
-  res <- show_plot()
-  if(gf_opts$debug) {
-    print(paste0("Ending publish. Device: ", paste0(names(dev.list()), collapse=", ")))
+  res <- show_plot(watermark_data)
+  if(!is.null(watermark_data)) {
+    #file.remove(watermark_data$png_path)
   }
-  return(invisible(res))
+
+  if(!is.null(revision_callback)) {
+    revision_callback(rev, image_data, other_data)
+  }
+
+  if(gf_opts$debug) {
+    print(paste0("Ending publish. Devices: ", paste0(names(dev.list()), collapse=", ")))
+  }
+
+  return(res)
 }
 
 
@@ -394,6 +464,9 @@ publish <- function(plot_obj, figure_name, show=TRUE,
 #' @param auto_publish will publish all plots automatically if TRUE
 #' @param verbose whether to show verbose output
 #' @param debug whether to show debugging information
+#' @param show which figure to display in the document: original, watermark, or hide. Note that this setting \
+#' only affects the display and doesn't change what gets published: e.g. even if you choose to display \
+#' the original figure, the watermarked version will still be published to GoFigr.
 #'
 #' @return named list of GoFigr options
 #' @export
@@ -405,7 +478,10 @@ enable <- function(analysis_api_id=NULL,
                    watermark=QR_WATERMARK,
                    auto_publish=TRUE,
                    verbose=FALSE,
-                   debug=FALSE) {
+                   debug=FALSE,
+                   show="watermark") {
+  check_show_setting(show)
+
   # Create the GoFigr client
   gf <- gofigr_client(workspace=workspace, verbose=verbose)
 
@@ -433,6 +509,7 @@ enable <- function(analysis_api_id=NULL,
     watermark <- watermark
     verbose <- verbose
     debug <- debug
+    show <- show
     deferred_plots <- list()
     rstudio_callback <- tryCatch( # only works in RStudio
       {

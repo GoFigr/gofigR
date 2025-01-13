@@ -2,7 +2,7 @@
 % Please edit documentation in R/graphics.R
 \name{plot_interactive}
 \alias{plot_interactive}
-\title{Replacement for plot in an interactive session outside of RStudio.
+\title{Replacement for plot in an interactive session outside of RStudio (e.g. terminal).
 Captures the plot and publishes to GoFigr.}
 \usage{
 plot_interactive(..., base_func)
@@ -14,6 +14,6 @@ plot_interactive(..., base_func)
 same as plot()
 }
 \description{
-Replacement for plot in an interactive session outside of RStudio.
+Replacement for plot in an interactive session outside of RStudio (e.g. terminal).
 Captures the plot and publishes to GoFigr.
 }
