@@ -464,8 +464,8 @@ publish <- function(plot_obj, figure_name, show=NULL,
     } else if(show == "watermark") {
       opts <- get_options()
       img_elt <- image_to_html(watermark_data$data_object[[1]])
-      opts$deferred_asis <- list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
-                                                                    img_elt, "</div>")))
+      opts$deferred_asis <- append(opts$deferred_asis, list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
+                                                                    img_elt, "</div>"))))
       return(invisible(NULL))
     } else {
       return(invisible(NULL))
