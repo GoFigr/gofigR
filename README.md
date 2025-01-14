@@ -88,7 +88,7 @@ plot(pressure)
 
 ## Capturing output
 
-GoFigr will attempt to intercept and publish all plots by default. You can also 
+GoFigr will attempt to intercept and publish all calls to `plot` and `print`. You can also 
 explicitly tell it to capture output from an expression:
 
 ```

@@ -22,7 +22,12 @@ enable(analysis_name="My first Rmd analysis 2",
 ```
 
 ```{r html_test}
-print(knitr::asis_output("<img src='https://gofigr.io/wp-content/uploads/2023/03/cropped-GoFigr-500-%C3%97-200-px-1500-%C3%97-340-px-1-2-300x78.png'></img>"))
+func <- function() {
+  knitr::asis_output("<img src='https://gofigr.io/wp-content/uploads/2023/03/cropped-GoFigr-500-%C3%97-200-px-1500-%C3%97-340-px-1-2-300x78.png'/><img src='https://gofigr.io/wp-content/uploads/2023/03/cropped-GoFigr-500-%C3%97-200-px-1500-%C3%97-340-px-1-2-300x78.png'/>")
+  #knitr::asis_output("https://gofigr.io/wp-content/uploads/2023/03/cropped-GoFigr-500-%C3%97-200-px-1500-%C3%97-340-px-1-2-300x78.png")
+}
+
+func()
 ```
 
 ## R Markdown
@@ -46,10 +51,17 @@ gofigR::capture({
 
 
 ```{r pressure, gofigr_figure_name="My first figure", fig.width=10, fig.height=5, gofigr_on=TRUE}
-gofigR::capture({
-  plot(pressure, main="Pressure vs temperature")
-  text(50, 50, "My pretty figure")
-}, NULL)
+myplot <- function() {
+  res <- NULL
+  res <- gofigR::capture({
+    plot(pressure, main="Pressure vs temperature")
+    text(50, 50, "My pretty figure")
+  }, NULL)
+  print("Done!")
+  print(res)
+}
+
+myplot()
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

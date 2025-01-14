@@ -462,7 +462,11 @@ publish <- function(plot_obj, figure_name, show=NULL,
     if(show == "original" || is.null(watermark_data)) {
       do.call(base_func, append(list(plot_obj), other_args))
     } else if(show == "watermark") {
-      return(knitr::include_graphics(watermark_data$png_path))
+      opts <- get_options()
+      img_elt <- image_to_html(watermark_data$data_object[[1]])
+      opts$deferred_asis <- list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
+                                                                    img_elt, "</div>")))
+      return(invisible(NULL))
     } else {
       return(invisible(NULL))
     }
@@ -548,6 +552,18 @@ intercept_gplots <- function() {
 }
 
 
+gofigr_knitr_hook <- function(before, options, envir, name, ...) {
+  if (!before) { # after the chunk has run
+    opts <- get_options()
+    tryCatch({
+      sapply(opts$deferred_asis, knitr::knit_print)
+    }, finally={
+      opts$deferred_asis <- list()
+    })
+  }
+}
+
+
 #' Enables GoFigr support.
 #'
 #' @param analysis_api_id Analysis API ID (if analysis_name is NULL)
@@ -607,7 +623,8 @@ enable <- function(analysis_api_id=NULL,
     verbose <- verbose
     debug <- debug
     show <- show
-    deferred_plots <- list()
+    deferred_plots <- list() # for RStudio
+    deferred_asis <- list() # for knitr
     rstudio_callback <- tryCatch( # only works in RStudio
       {
         rstudioapi::registerChunkCallback(rstudio_chunk_callback)
@@ -630,6 +647,9 @@ enable <- function(analysis_api_id=NULL,
       intercept_gplots()
     }
   }
+
+  knitr::knit_hooks$set(gofigr_hook=gofigr_knitr_hook)
+  knitr::opts_chunk$set(gofigr_hook=TRUE)
 
   return(invisible(get_options()))
 }
