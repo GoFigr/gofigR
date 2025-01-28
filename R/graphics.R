@@ -14,10 +14,8 @@ intercept_off <- function() {
 #'
 #' @param func function in which to suppress intercepts
 #'
-#' @return
+#' @return the function with GoFigr supressed
 #' @export
-#'
-#' @examples
 suppress <- function(func) {
  function(...) {
    initial_status <- is_intercept_on()
@@ -52,7 +50,6 @@ suppress <- function(func) {
 capture <- function(expr, data=NULL, env=parent.frame()) {
   # Convert to quosure to capture the calling environment
   quos <- rlang::as_quosure(substitute(expr), env)
-  print(rlang::get_expr(quos))
 
   # GoFigr assumes that the first argument is the plot object, to be published
   # as an RDS file. Hence the "pointless" function(data) wrapper.
@@ -60,7 +57,7 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
       eval(rlang::get_expr(quos),
            envir = rlang::get_env(quos))
   })
-  wrapper(data)
+  invisible(wrapper(data))
 }
 
 #' Sets GoFigr options.
@@ -196,7 +193,7 @@ parse_params <- function(chunk, patterns=all_patterns$md) {
 #' @return same as plot()
 #' @export
 plot_rstudio <- function(..., base_func) {
-  base_func(...)
+  base_plot_result <- base_func(...)
 
   args <- split_args(...)
   plot_obj = args$first
@@ -250,11 +247,12 @@ plot_rstudio <- function(..., base_func) {
             options=options,
             show="hide",
             revision_callback = revision_callback)
-    print("Done with publish()")
 
     return(result)
     })
 
+
+  return(base_plot_result)
 }
 
 
@@ -486,7 +484,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
     } else if(show == "watermark") {
       opts <- get_options()
       img_elt <- image_to_html(watermark_data$data_object[[1]])
-      opts$knits_deferred <- append(opts$knits_deferred, list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
+      opts$knitr_deferred <- append(opts$knitr_deferred, list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
                                                                     img_elt, "</div>"))))
       return(invisible(NULL))
     } else {
@@ -566,17 +564,17 @@ publish <- function(plot_obj, figure_name, show=NULL,
   return(res)
 }
 
-intercept_base <- function() {
-  assign("plot", intercept(base::plot), .GlobalEnv)
-  assign("barplot", intercept(graphics::barplot), .GlobalEnv)
-  assign("print", intercept(base::print, supported_classes=c("ggplot")), .GlobalEnv)
-}
+#' Plots and publishes an object (if supported)
+#' @export
+gf_plot <- intercept(base::plot, supported_classes=c("ggplot"))
 
-intercept_gplots <- function() {
-  ns <- getNamespace("gplots")
-  sapply(c("venn", "heatmap.2", "hist2d"), function(name) {
-    assign(name, intercept(ns[[name]]), .GlobalEnv)
-  })
+# Prints and publishes an object (if supported)
+#' @export
+gf_print <- intercept(base::print, supported_classes=c("ggplot"))
+
+intercept_base <- function() {
+  assign("plot", gf_plot, .GlobalEnv)
+  assign("print", gf_print, .GlobalEnv)
 }
 
 
@@ -584,9 +582,9 @@ gofigr_knitr_hook <- function(before, options, envir, name, ...) {
   if (!before) { # after the chunk has run
     opts <- get_options()
     tryCatch({
-      sapply(opts$knits_deferred, knitr::knit_print)
+      sapply(opts$knitr_deferred, knitr::knit_print)
     }, finally={
-      opts$knits_deferred <- list()
+      opts$knitr_deferred <- list()
     })
   }
 }
@@ -652,10 +650,24 @@ enable <- function(analysis_api_id=NULL,
     debug <- debug
     show <- show
 
-    # RStudio does not make chunk options available at run time, but
-    # they are available in the post-execution hook
+    # RStudio does not make chunk options available at run time, and we can't
+    # publish a figure without them (they include critical parameters like
+    # chunk label, figure size, etc.).
+    #
+    # However, chunk options are available in the chunk callback, so we defer
+    # publication until the callback and store plotting functions (closures)
+    # in the list below.
     rstudio_deferred <- list()
-    knits_deferred <- list() # for knitr
+
+    # When running under knitr, there's no clean way to intercept
+    # the figure and show a watermarked version. That's because watermarking
+    # a figure changes its size, and that breaks some internal knitr
+    # assumtions and gives a visually poor output (letterboxed, wrong aspect ratio, etc.).
+    # To work around it, we suppress *all* figure display and store the
+    # watermarked figures as knitr::asis objects, and only print
+    # them in the gofigr_hook.
+    knitr_deferred <- list()
+
     rstudio_callback <- tryCatch( # only works in RStudio
       {
         rstudioapi::registerChunkCallback(rstudio_chunk_callback)
@@ -668,15 +680,9 @@ enable <- function(analysis_api_id=NULL,
     return(environment())
   })))
 
-  intercept_on()
-
   if(auto_publish) {
+    intercept_on()
     intercept_base()
-
-    pkgs <- rownames(installed.packages())
-    if("gplots" %in% pkgs) {
-      intercept_gplots()
-    }
   }
 
   knitr::knit_hooks$set(gofigr_hook=gofigr_knitr_hook)

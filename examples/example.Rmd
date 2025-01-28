@@ -18,7 +18,7 @@ library(gplots)
 knitr::opts_chunk$set(echo = TRUE)
 enable(analysis_name="My first Rmd analysis 2",
        watermark = gofigR::QR_WATERMARK,
-       debug=TRUE, auto_publish = TRUE)
+       debug=FALSE, auto_publish = TRUE)
 ```
 
 ```{r html_test}
@@ -81,6 +81,7 @@ gp <- ggplot(data=pressure, mapping=aes(x=temperature, y=pressure))
 gp <- gp + geom_line()
 plot(gp)
 ```
+
 ```{r heatmap}
 mat <- matrix(rnorm(1200), ncol=6)
 
