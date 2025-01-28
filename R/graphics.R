@@ -611,7 +611,7 @@ enable <- function(analysis_api_id=NULL,
   old_opts <- get_options()
   if(!is.null(old_opts) && !is.null(old_opts$rstudio_callback)) {
     tryCatch({
-      rstudioapi::unregisterChunkCallback(old_opts$rstudio_callback)
+      suppressWarnings(rstudioapi::unregisterChunkCallback(old_opts$rstudio_callback))
     })
   }
 
