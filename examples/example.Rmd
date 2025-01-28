@@ -18,7 +18,7 @@ library(gplots)
 knitr::opts_chunk$set(echo = TRUE)
 enable(analysis_name="My first Rmd analysis 2",
        watermark = gofigR::QR_WATERMARK,
-       debug=FALSE, auto_publish = TRUE)
+       debug=FALSE, auto_publish = FALSE)
 ```
 
 ```{r html_test}

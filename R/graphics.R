@@ -56,7 +56,7 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
   wrapper <- intercept(function(data) {
       eval(rlang::get_expr(quos),
            envir = rlang::get_env(quos))
-  })
+  }, force=TRUE)
   invisible(wrapper(data))
 }
 
@@ -307,18 +307,19 @@ print_revision <- function(rev, ...) {
 #' @param plot_func function to intercept
 #' @param supported_classes calls will be intercepted *only if* the first argument is an \
 #' instance of any of these classes
+#' @param force force intercept even if auto_publish is off
 #'
 #' @return intercepted function
 #' @export
 #'
 #' @examples
 #' heatmap.2 <- intercept(gplots::heatmap.2)
-intercept <- function(plot_func, supported_classes=NULL) {
+intercept <- function(plot_func, supported_classes=NULL, force=FALSE) {
   # Make sure we don't capture anything internally called by base_func
   base_func <- suppress(plot_func)
 
   function(...) {
-    if(!is_intercept_on()) {
+    if(!is_intercept_on() && !force) {
       return(base_func(...))
     }
 
@@ -683,6 +684,8 @@ enable <- function(analysis_api_id=NULL,
   if(auto_publish) {
     intercept_on()
     intercept_base()
+  } else {
+    intercept_off()
   }
 
   knitr::knit_hooks$set(gofigr_hook=gofigr_knitr_hook)
