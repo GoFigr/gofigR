@@ -18,7 +18,7 @@ library(gplots)
 knitr::opts_chunk$set(echo = TRUE)
 enable(analysis_name="My first Rmd analysis 2",
        watermark = gofigR::QR_WATERMARK,
-       debug=FALSE)
+       debug=TRUE, auto_publish = TRUE)
 ```
 
 ```{r html_test}
@@ -42,11 +42,14 @@ When you click the **Knit** button a document will be generated that includes bo
 You can also embed plots, for example:
 
 
-```{r include_image}
-gofigR::capture({
-  base::plot(pressure)
-  base::plot(pressure, main="Another one")
-}, pressure)
+```{r manual_capture}
+lapply(1:2, function(i) {
+  gofigR::capture({
+    print("Plotting!")
+    #plot(pressure)
+    plot(pressure, main=paste0("Plot ", i))
+  }, pressure)
+})
 ```
 
 

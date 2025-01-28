@@ -10,15 +10,27 @@ intercept_off <- function() {
   assign("gofigr_intercept_on", FALSE, .GlobalEnv)
 }
 
-suppress <- function(expr) {
-  if(!is_intercept_on()) {
-    return(expr)
-  }
+#' Suppresses any automatic GoFigr publication hooks.
+#'
+#' @param func function in which to suppress intercepts
+#'
+#' @return
+#' @export
+#'
+#' @examples
+suppress <- function(func) {
+ function(...) {
+   initial_status <- is_intercept_on()
 
- tryCatch({
-    intercept_off()
-    force(expr)
-   }, finally={intercept_on()})
+   tryCatch({
+      intercept_off()
+      func(...)
+     }, finally={
+       if(initial_status) {
+         intercept_on()
+       }
+     })
+ }
 }
 
 #' Captures output of an expression and publishes it to GoFigr. This function
@@ -27,6 +39,7 @@ suppress <- function(expr) {
 #'
 #' @param expr expression which generates your figure
 #' @param data input data to publish with the figure
+#' @param env environment in which to evaluate the captured expression (default=parent.frame())
 #'
 #' @return result of evaluating your expression
 #' @export
@@ -37,10 +50,15 @@ suppress <- function(expr) {
 #' text(50, 50, "My pretty figure")
 #' }, pressure)
 capture <- function(expr, data=NULL, env=parent.frame()) {
-  expr_func <- shiny::exprToFunction(expr, env=env)
+  # Convert to quosure to capture the calling environment
+  quos <- rlang::as_quosure(substitute(expr), env)
+  print(rlang::get_expr(quos))
 
+  # GoFigr assumes that the first argument is the plot object, to be published
+  # as an RDS file. Hence the "pointless" function(data) wrapper.
   wrapper <- intercept(function(data) {
-    suppress(expr_func())
+      eval(rlang::get_expr(quos),
+           envir = rlang::get_env(quos))
   })
   wrapper(data)
 }
@@ -75,23 +93,24 @@ rstudio_chunk_callback <- function(chunkName, chunkCode) {
   opts <- get_options()
   if(opts$debug) {
     cat(paste0("RStudio callback for chunk ", chunkName,
-               ". Deferred plots: ", length(opts$deferred_plots), "\n"))
+               ". Deferred plots: ", length(opts$rstudio_deferred), "\n"))
   }
 
   images <- list()
 
   tryCatch({
     chunkCode <- textutils::HTMLdecode(chunkCode)
-    lapply(opts$deferred_plots, function(defplot) {
+    lapply(opts$rstudio_deferred, function(defplot) {
       images <<- append(images, list(defplot(chunkName, chunkCode)))
     })
   }, error=function(cond) {
+    cat("Publishing failed\n")
     cat(paste0(cond, "\n"), file=stderr())
   }, finally={
     if(opts$debug) {
       cat("Resetting deferred\n")
     }
-    opts$deferred_plots <- list()
+    opts$rstudio_deferred <- list()
   })
 
   filtered_images <- Filter(function(img) {"gofigrdata" %in% class(img)},
@@ -183,7 +202,7 @@ plot_rstudio <- function(..., base_func) {
   plot_obj = args$first
   opts <- get_options()
 
-  opts$deferred_plots <- append(opts$deferred_plots, function(chunkName, chunkCode) {
+  opts$rstudio_deferred <- append(opts$rstudio_deferred, function(chunkName, chunkCode) {
     options <- parse_params(chunkCode)
 
     # Is GoFigr disabled for current chunk?
@@ -231,6 +250,7 @@ plot_rstudio <- function(..., base_func) {
             options=options,
             show="hide",
             revision_callback = revision_callback)
+    print("Done with publish()")
 
     return(result)
     })
@@ -286,7 +306,7 @@ print_revision <- function(rev, ...) {
 #' Wraps a plotting function (e.g. heatmap.2) so that its output is intercepted
 #' by GoFigr.
 #'
-#' @param base_func function to intercept
+#' @param plot_func function to intercept
 #' @param supported_classes calls will be intercepted *only if* the first argument is an \
 #' instance of any of these classes
 #'
@@ -295,19 +315,20 @@ print_revision <- function(rev, ...) {
 #'
 #' @examples
 #' heatmap.2 <- intercept(gplots::heatmap.2)
-intercept <- function(base_func, supported_classes=NULL) {
+intercept <- function(plot_func, supported_classes=NULL) {
+  # Make sure we don't capture anything internally called by base_func
+  base_func <- suppress(plot_func)
+
   function(...) {
     if(!is_intercept_on()) {
       return(base_func(...))
     }
 
-    # Check if the first argument is a plot we support. If not, defer to base_func
-    if(!is.null(supported_classes) && !any(class(split_args(...)$first) %in% supported_classes)) {
-      return(base_func(...))
-    }
-
     tryCatch({
-      intercept_off()
+      # Check if the first argument is a plot we support. If not, defer to base_func
+      if(!is.null(supported_classes) && !any(class(split_args(...)$first) %in% supported_classes)) {
+        return(base_func(...))
+      }
 
       if(!is.null(knitr::current_input())) {
         # Running in knitr
@@ -438,6 +459,7 @@ save_as_image_file <- function(format, plot_obj, other_args, base_func, options)
       dev.off()
     }
   })
+
   return(path)
 }
 
@@ -464,7 +486,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
     } else if(show == "watermark") {
       opts <- get_options()
       img_elt <- image_to_html(watermark_data$data_object[[1]])
-      opts$deferred_asis <- append(opts$deferred_asis, list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
+      opts$knits_deferred <- append(opts$knits_deferred, list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
                                                                     img_elt, "</div>"))))
       return(invisible(NULL))
     } else {
@@ -494,6 +516,12 @@ publish <- function(plot_obj, figure_name, show=NULL,
   client <- gf_opts$client
 
   png_path <- save_as_image_file("png", plot_obj, other_args, base_func, options)
+  if(!file.exists(png_path)) {
+    if(gf_opts$verbose) {
+      print("No output to publish\n")
+    }
+    return()
+  }
 
   fig <- gofigR::find_figure(gf_opts$client, gf_opts$analysis, figure_name, create=TRUE)
 
@@ -556,9 +584,9 @@ gofigr_knitr_hook <- function(before, options, envir, name, ...) {
   if (!before) { # after the chunk has run
     opts <- get_options()
     tryCatch({
-      sapply(opts$deferred_asis, knitr::knit_print)
+      sapply(opts$knits_deferred, knitr::knit_print)
     }, finally={
-      opts$deferred_asis <- list()
+      opts$knits_deferred <- list()
     })
   }
 }
@@ -623,8 +651,11 @@ enable <- function(analysis_api_id=NULL,
     verbose <- verbose
     debug <- debug
     show <- show
-    deferred_plots <- list() # for RStudio
-    deferred_asis <- list() # for knitr
+
+    # RStudio does not make chunk options available at run time, but
+    # they are available in the post-execution hook
+    rstudio_deferred <- list()
+    knits_deferred <- list() # for knitr
     rstudio_callback <- tryCatch( # only works in RStudio
       {
         rstudioapi::registerChunkCallback(rstudio_chunk_callback)
