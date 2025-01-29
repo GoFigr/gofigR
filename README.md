@@ -103,7 +103,8 @@ from a compatible library (at the moment, only ggplot).
 
 ## Manual capture
 
-If you are using
+To capture output from old-style R plotting or from other libraries, including when the plot is built iteratively across
+multiple expressions, wrap your code in `gofigR::capture`:
 
 ```         
 gofigR::capture({
@@ -113,15 +114,14 @@ gofigR::capture({
 ```
 
 This is handy when you build a plot iteratively. For example, you may call `plot(...)` first, followed by a call to
-`text()` to add annotations, or `legend()` to place the legend. In that case you want to execute the entire block, as
-opposed to just `plot()`, before pushing output to GoFigr.
+`text()` to add annotations, or `legend()` to place the legend.
 
 Note the argument following the expression (`pressure` in the snippet above). It specifies the data which you want to
 associate with the figure -- it will show up under "files" (as `.RDS`) once published.
 
 ## Adding support for other plotting libraries
 
-If you have a plotting function which GoFigr is not automatically detecting, you can register it as follows:
+If you have a plotting function which you use often and which you would like to auto-publish, you can use `intercept`:
 
 ```         
 barplot <- gofigR::intercept(graphics::barplot)

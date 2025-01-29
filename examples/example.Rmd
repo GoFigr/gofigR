@@ -6,7 +6,7 @@ output: html_document
 
 ---
 
-```{r setup, include=TRUE}
+```{r setup, include=FALSE}
 library(gofigR)
 library(ggplot2)
 library(plotly)
@@ -45,7 +45,6 @@ You can also embed plots, for example:
 ```{r manual_capture}
 lapply(1:2, function(i) {
   gofigR::capture({
-    print("Plotting!")
     #plot(pressure)
     plot(pressure, main=paste0("Plot ", i))
   }, pressure)
@@ -69,24 +68,27 @@ myplot()
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
-```{r barplot, gofigr_on=FALSE}
+```{r barplot}
 temperatures <- c(22, 27, 26, 24, 23, 26, 28)
 
 # bar plot of temperatures vector
+gofigR::capture({
+  print("Call")
 barplot(temperatures)
+})
 ```
 
 ```{r ggplot}
 gp <- ggplot(data=pressure, mapping=aes(x=temperature, y=pressure))
 gp <- gp + geom_line()
-plot(gp)
+capture(gp)
 ```
 
 ```{r heatmap}
 mat <- matrix(rnorm(1200), ncol=6)
 
 # heatmap with the defaults parameters
-heatmap.2(x=mat)
+capture(heatmap.2(x=mat))
 ```
 
 

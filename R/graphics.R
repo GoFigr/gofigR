@@ -54,8 +54,11 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
   # GoFigr assumes that the first argument is the plot object, to be published
   # as an RDS file. Hence the "pointless" function(data) wrapper.
   wrapper <- intercept(function(data) {
-      eval(rlang::get_expr(quos),
-           envir = rlang::get_env(quos))
+      res <- eval(rlang::get_expr(quos),
+                  envir = rlang::get_env(quos))
+      if(!is.null(res)) {
+        gf_plot(res) # Implicitly plot the return value
+      }
   }, force=TRUE)
   invisible(wrapper(data))
 }
@@ -671,10 +674,12 @@ enable <- function(analysis_api_id=NULL,
 
     rstudio_callback <- tryCatch( # only works in RStudio
       {
-        rstudioapi::registerChunkCallback(rstudio_chunk_callback)
+        if(rstudioapi::isAvailable()) {
+          suppressWarnings(rstudioapi::registerChunkCallback(rstudio_chunk_callback))
+        }
       },
       error=function(err) {
-        print(err)
+        cat(pase0(err, "\n"), file=stderr())
         return(NULL)
       })
 
