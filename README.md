@@ -98,8 +98,8 @@ plot(pressure)
 
 ## Automatic output capture
 
-If `auto_publish` is on, GoFigr will intercept all calls to `plot` and `print` and publish the results assuming it's
-from a compatible library (at the moment, only ggplot).
+If `auto_publish` is on, GoFigr will intercept all calls to `plot` and `print` and publish the results if they are from
+a compatible library (at the moment, only ggplot).
 
 ## Manual capture
 
@@ -110,14 +110,14 @@ multiple expressions, wrap your code in `gofigR::capture`:
 gofigR::capture({
   plot(pressure, main="Pressure vs temperature")
   text(50, 50, "My pretty figure")
-}, pressure)
+}, data=pressure)
 ```
 
 This is handy when you build a plot iteratively. For example, you may call `plot(...)` first, followed by a call to
 `text()` to add annotations, or `legend()` to place the legend.
 
-Note the argument following the expression (`pressure` in the snippet above). It specifies the data which you want to
-associate with the figure -- it will show up under "files" (as `.RDS`) once published.
+Note the optional `data` argument following the expression. It specifies the data which you want to associate with the
+figure -- it will show up under "files" (as `.RDS`) once published.
 
 ## Adding support for other plotting libraries
 

@@ -56,7 +56,7 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
   wrapper <- intercept(function(data) {
       res <- eval(rlang::get_expr(quos),
                   envir = rlang::get_env(quos))
-      if(!is.null(res)) {
+      if(!is.null(res) && is_supported(res)) {
         gf_plot(res) # Implicitly plot the return value
       }
   }, force=TRUE)
@@ -568,13 +568,21 @@ publish <- function(plot_obj, figure_name, show=NULL,
   return(res)
 }
 
+get_supported_classes <- function() {
+  return(c("ggplot"))
+}
+
+is_supported <- function(x) {
+  return(any(class(x) %in% get_supported_classes()))
+}
+
 #' Plots and publishes an object (if supported)
 #' @export
-gf_plot <- intercept(base::plot, supported_classes=c("ggplot"))
+gf_plot <- intercept(base::plot, supported_classes=get_supported_classes())
 
 # Prints and publishes an object (if supported)
 #' @export
-gf_print <- intercept(base::print, supported_classes=c("ggplot"))
+gf_print <- intercept(base::print, supported_classes=get_supported_classes())
 
 intercept_base <- function() {
   assign("plot", gf_plot, .GlobalEnv)

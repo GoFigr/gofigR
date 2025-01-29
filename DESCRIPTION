@@ -1,7 +1,7 @@
 Package: gofigR
 Type: Package
 Title: R client for GoFigr.io
-Version: 0.1.0
+Version: 0.2.0
 Author: Maciej Pacula
 Maintainer: Maciej Pacula <maciej@gofigr.io>
 Description: This package implements an R client for GoFigr.io, the zero-effort reproducibility engine.
