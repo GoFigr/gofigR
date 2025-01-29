@@ -4,10 +4,10 @@
 \alias{print.gofigrdata}
 \title{Default print representation of GoFigr data objects.}
 \usage{
-\method{print}{gofigrdata}(obj, ...)
+\method{print}{gofigrdata}(x, ...)
 }
 \arguments{
-\item{obj}{object to print}
+\item{x}{object to print}
 
 \item{...}{passed to cat}
 }

@@ -93,13 +93,13 @@ watermark_generator <- function(show_qr=TRUE,
 
       link_img <- stack_horizontally(list(link_img, qr_img))
 
-      image_destroy(qr_img)
+      magick::image_destroy(qr_img)
     }
 
     # Composite
     if(!is.null(image)) {
       res <- stack_vertically(list(image, link_img))
-      image_destroy(link_img)
+      magick::image_destroy(link_img)
       return(res)
     } else {
       return(link_img)
@@ -107,11 +107,23 @@ watermark_generator <- function(show_qr=TRUE,
   }
 }
 
+#' Draws a watermark with a GoFigr link and a QR code
+#'
+#' @param revision GoFigr revision object for which to generate a watermark
+#' @param image Magick image to which to add the watermark
+#'
 #' @export
 QR_WATERMARK = watermark_generator()
 
+#' Draws a watermark with just a GoFigr link
+#'
+#' @param revision GoFigr revision object for which to generate a watermark
+#' @param image Magick image to which to add the watermark
+#'
 #' @export
 LINK_WATERMARK = watermark_generator(show_qr = FALSE)
 
+#' Does not draw any watermarks.
+#'
 #' @export
 NO_WATERMARK = NULL

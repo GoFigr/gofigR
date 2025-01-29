@@ -15,6 +15,3 @@ user details
 \description{
 Fetches user details for the currently logged in user.
 }
-\examples{
-user_info()
-}

@@ -20,6 +20,12 @@ GoFigr will automatically publish all `ggplot` output assuming you call `gofigR:
 ## Installation
 
 ``` r
+install.packages("gofigR")
+```
+
+You can also install the development version from GitHub:
+
+``` r
 library(devtools)
 devtools::install_github("https://github.com/gofigr/gofigR")
 ```

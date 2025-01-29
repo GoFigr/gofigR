@@ -6,9 +6,6 @@
 #' @param max_attempts maximum number of attempts
 #'
 #' @return input, or result of validate(input) if validate is supplied
-#'
-#' @examples
-#' read_prompt("Enter username: ", validate=trimws)
 read_prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
   if(attempt > max_attempts) {
     stop(paste0("Failed after ", max_attempts, " attempts"))
@@ -29,7 +26,7 @@ read_prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
 
 #' Prompts the user for username & password and logs into GoFigr
 #'
-#' @param max_attempts
+#' @param max_attempts maximum number of login attempts before giving up
 #'
 #' @return GoFigr client
 login_with_username <- function(max_attempts) {
@@ -37,7 +34,7 @@ login_with_username <- function(max_attempts) {
   attempt <- 0
   while(!connection_ok && attempt < max_attempts) {
     username <- read_prompt("Username: ")
-    password <- getPass("Password: ")
+    password <- getPass::getPass("Password: ")
 
     cat("Testing connection...\n")
 
@@ -71,7 +68,7 @@ login_with_username <- function(max_attempts) {
 #' Prompts the user for an API key or creates a new one
 #'
 #' @param gf Password-authenticated GoFigr client
-#' @param max_attempts
+#' @param max_attempts Maximum number of login attempts before giving up
 #'
 #' @return API key, either supplied by the user or newly created
 login_with_api_key <- function(gf, max_attempts) {
@@ -84,7 +81,8 @@ login_with_api_key <- function(gf, max_attempts) {
                                                    ignore_config=TRUE)
                            info_tmp <- user_info(gf_tmp)
                            return(api_key)
-                         })
+                         },
+                         max_attempts = max_attempts)
   if(api_key != "") {
     return(api_key)
   }
@@ -96,7 +94,8 @@ login_with_api_key <- function(gf, max_attempts) {
                               stop("Name cannot be empty")
                             }
                             return(x)
-                          })
+                          },
+                          max_attempts = max_attempts)
 
   created_key <- create_api_key(gf, key_name)
   return(created_key$token)
@@ -109,9 +108,6 @@ login_with_api_key <- function(gf, max_attempts) {
 #'
 #' @return No return value
 #' @export
-#'
-#' @examples
-#' gfconfig()
 gfconfig <- function(max_attempts=3) {
   cat("-------------------------------------------------------------------\n")
   cat("Welcome to GoFigr! This wizard will help you get up and running.\n")
@@ -150,7 +146,7 @@ gfconfig <- function(max_attempts=3) {
 
   config_path <- CONFIG_PATH
   fileConn <- file(config_path)
-  write(toJSON(config, auto_unbox=TRUE, pretty=TRUE), fileConn)
+  write(jsonlite::toJSON(config, auto_unbox=TRUE, pretty=TRUE), fileConn)
   close(fileConn)
 
   invisible(cat(paste0("\nConfiguration saved to ", config_path, ". Happy analysis!\n")))

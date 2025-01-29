@@ -17,6 +17,3 @@ No return value
 Configures gofigr for use on this machine. Saves configuration
 to ~/.gofigr.
 }
-\examples{
-gfconfig()
-}

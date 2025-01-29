@@ -9,7 +9,7 @@ login_with_api_key(gf, max_attempts)
 \arguments{
 \item{gf}{Password-authenticated GoFigr client}
 
-\item{max_attempts}{}
+\item{max_attempts}{Maximum number of login attempts before giving up}
 }
 \value{
 API key, either supplied by the user or newly created

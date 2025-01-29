@@ -20,7 +20,3 @@ parsed configuration or empty list if not available
 * GF_WORKSPACE or config["workspace"]
 * GF_URL or config["url"]
 }
-\examples{
-read_config()
-read_config("~/.gofigr")
-}

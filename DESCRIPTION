@@ -1,12 +1,17 @@
 Package: gofigR
 Type: Package
-Title: R client for GoFigr.io
-Version: 0.2.0
-Author: Maciej Pacula
-Maintainer: Maciej Pacula <maciej@gofigr.io>
-Description: This package implements an R client for GoFigr.io, the zero-effort reproducibility engine.
-License: MIT
+Title: Client for GoFigr.io
+Version: 0.2.1
+Authors@R: person(family="Pacula", given="Maciej", email="maciej@gofigr.io", role=c("cph", "cre", "aut"))
+Description: This library integrates with your RMarkdown documents to automatically publish
+  figures to the GoFigr.io service. Supports both 'knitr' and interactive 
+  execution within RStudio.
+License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+URL: https://github.com/GoFigr/gofigR
+BugReports: https://github.com/GoFigr/gofigR/issues
 RoxygenNote: 7.3.2
-Depends: httr, jsonlite, knitr, base64enc, readr, animation, magick, qrcode, rsvg, getPass, textutils, scriptName, xfun, rlang
+Imports: httr, jsonlite, knitr, base64enc, readr, magick, qrcode, 
+  getPass, textutils, scriptName, xfun, rlang, stringr, rstudioapi
+Suggests:
+  ggplot2, gplots

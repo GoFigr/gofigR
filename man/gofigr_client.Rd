@@ -49,7 +49,7 @@ configuration file (~/.gofigr) or environment variables if not supplied:
 * GF_URL or config$url
 }
 \examples{
-gofigr_client()  # use config from ~/.gofigr or environment variables
-gofigr_client(username="joe", password="abc123") # password login
-gofigr_client(api_key="abcdef0123456789") # API key login
+\dontrun{gofigr_client()  # use config from ~/.gofigr or environment variables}
+\dontrun{gofigr_client(username="joe", password="abc123") # password login}
+\dontrun{gofigr_client(api_key="abcdef0123456789") # API key login}
 }

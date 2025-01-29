@@ -17,6 +17,3 @@ workspace details
 \description{
 Retrieves workspace details.
 }
-\examples{
-get_workspace("59da9bdb-2095-47a9-b414-c029f8a00e0e")
-}

@@ -4,10 +4,12 @@
 \alias{print.gofigr}
 \title{Default print method for a GoFigr client.}
 \usage{
-\method{print}{gofigr}(gf, ...)
+\method{print}{gofigr}(x, ...)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{x}{GoFigr client}
+
+\item{...}{passed to cat}
 }
 \value{
 NA

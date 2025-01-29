@@ -41,12 +41,6 @@ suppress <- function(func) {
 #'
 #' @return result of evaluating your expression
 #' @export
-#'
-#' @examples
-#' gofigR::capture({
-#' plot(pressure, main="Pressure vs temperature")
-#' text(50, 50, "My pretty figure")
-#' }, pressure)
 capture <- function(expr, data=NULL, env=parent.frame()) {
   # Convert to quosure to capture the calling environment
   quos <- rlang::as_quosure(substitute(expr), env)
@@ -65,7 +59,7 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
 
 #' Sets GoFigr options.
 #'
-#' @param options
+#' @param options New options that will replace existing options.
 #'
 #' @return NA
 #' @export
@@ -75,7 +69,7 @@ set_options <- function(options) {
 
 #' Gets configured GoFigr options.
 #'
-#' @return options
+#' @return GoFigr options, or NULL if not set.
 #' @export
 get_options <- function() {
   return(.GlobalEnv[["gofigr_options"]])
@@ -147,9 +141,9 @@ split_args <- function(...) {
 #' it to GoFigr.
 #'
 #' @param ... same as plot()
+#' @param base_func the function whose output we are trying to capture
 #'
 #' @return same as plot()
-#' @export
 plot_knitr <- function(..., base_func) {
   options <- knitr::opts_current$get()
 
@@ -178,7 +172,7 @@ plot_knitr <- function(..., base_func) {
           options=options)
 }
 
-parse_params <- function(chunk, patterns=all_patterns$md) {
+parse_params <- function(chunk, patterns=knitr::all_patterns$md) {
   header <- stringr::str_split(chunk, "\n")[[1]]
   m <- stringr::str_match(header, patterns$chunk.begin)
   m <- m[!is.na(m[, 1]), , drop=FALSE]
@@ -192,9 +186,9 @@ parse_params <- function(chunk, patterns=all_patterns$md) {
 #' Replacement for plot within RStudio. Captures the plot and publishes to GoFigr.
 #'
 #' @param ... same as plot()
+#' @param base_func the function whose output we are trying to capture
 #'
 #' @return same as plot()
-#' @export
 plot_rstudio <- function(..., base_func) {
   base_plot_result <- base_func(...)
 
@@ -263,14 +257,14 @@ plot_rstudio <- function(..., base_func) {
 #' Captures the plot and publishes to GoFigr.
 #'
 #' @param ... same as plot()
+#' @param base_func the function whose output we are trying to capture
 #'
 #' @return same as plot()
-#' @export
 plot_interactive <- function(..., base_func) {
   args <- split_args(...)
 
   histfile <- tempfile()
-  savehistory(histfile)
+  utils::savehistory(histfile)
 
   on.exit({ file.remove(histfile) }, add=TRUE)
   publish(args$first, figure_name="Anonymous Figure",
@@ -285,9 +279,9 @@ plot_interactive <- function(..., base_func) {
 #' Replacement for plot in a script. Captures the plot and publishes to GoFigr.
 #'
 #' @param ... same as plot()
+#' @param base_func the function whose output we are trying to capture
 #'
 #' @return same as plot()
-#' @export
 plot_script <- function(..., base_func) {
   args <- split_args(...)
 
@@ -360,8 +354,8 @@ intercept <- function(plot_func, supported_classes=NULL, force=FALSE) {
 }
 
 create_bare_revision <- function(client, fig, input_path, options) {
-  sess <- sessionInfo()
-  info <- capture.output({base::print(sess)})
+  sess <- utils::sessionInfo()
+  info <- utils::capture.output({base::print(sess)})
 
   rev <-  gofigR::create_revision(client, fig,
                                   metadata = list(input=input_path,
@@ -382,8 +376,8 @@ apply_watermark <- function(rev_bare, png_path, gf_opts) {
     watermarked_path <- paste0(png_path, "_watermarked.png")
     magick::image_write(watermarked, path=watermarked_path)
 
-    image_destroy(primary_img)
-    image_destroy(watermarked)
+    magick::image_destroy(primary_img)
+    magick::image_destroy(watermarked)
     return(list(data_object=list(make_image_data("figure", watermarked_path, "png", TRUE)),
                 png_path=watermarked_path))
   } else {
@@ -403,8 +397,8 @@ capture_rds <- function(obj, name) {
 
 annotate <- function(rev_bare, plot_obj, figure_name,
                      source_path, chunk_code=NULL) {
-  sess <- sessionInfo()
-  info <- capture.output({base::print(sess)})
+  sess <- utils::sessionInfo()
+  info <- utils::capture.output({base::print(sess)})
 
   # Plot object as RDS file
   data <- list(capture_rds(plot_obj,
@@ -430,17 +424,17 @@ save_as_image_file <- function(format, plot_obj, other_args, base_func, options)
 
   path <- tempfile(fileext=paste0(".", format))
   if(format == "png") {
-    newDevice <- function(...) { png(path,
+    newDevice <- function(...) { grDevices::png(path,
                                      width=default_if_null(options$out.width.px, width * dpi),
                                      height=default_if_null(options$out.height.px, height * dpi)) }
   } else if(format == "svg") {
-    newDevice <- function(...) { svg(path, width=width, height=height) }
+    newDevice <- function(...) { grDevices::svg(path, width=width, height=height) }
   } else if(format == "pdf") {
-    newDevice <- function(...) { pdf(path, width=width, height=heigh) }
+    newDevice <- function(...) { grDevices::pdf(path, width=width, height=height) }
   } else if(format == "eps") {
     newDevice <- function(...) {
-      setEPS()
-      postscript(path, width=width, height=height)
+      grDevices::setEPS()
+      grDevices::postscript(path, width=width, height=height)
     }
   } else {
     warning(paste0("Unsupported image format: ", format))
@@ -453,12 +447,12 @@ save_as_image_file <- function(format, plot_obj, other_args, base_func, options)
   device_id <- NULL
   tryCatch({
     device <- newDevice()
-    device_id <- dev.cur()
+    device_id <- grDevices::dev.cur()
     force(do_plot())
-    dev.off()
+    grDevices::dev.off()
   }, finally={
-    if(dev.cur() == device_id) {
-      dev.off()
+    if(grDevices::dev.cur() == device_id) {
+      grDevices::dev.off()
     }
   })
 
@@ -507,7 +501,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
   }
 
   if(gf_opts$debug) {
-    print(paste0("Starting publish. Devices: ", paste0(names(dev.list()), collapse=", ")))
+    print(paste0("Starting publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
   }
 
   if(is.null(show)) {
@@ -562,7 +556,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
   }
 
   if(gf_opts$debug) {
-    print(paste0("Ending publish. Devices: ", paste0(names(dev.list()), collapse=", ")))
+    print(paste0("Ending publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
   }
 
   return(res)
@@ -577,10 +571,16 @@ is_supported <- function(x) {
 }
 
 #' Plots and publishes an object (if supported)
+#' @param ... passed directly to plot
+#' @returns result of the call to plot(...)
+#'
 #' @export
 gf_plot <- intercept(base::plot, supported_classes=get_supported_classes())
 
-# Prints and publishes an object (if supported)
+#' Prints and publishes an object (if supported)
+#' @param ... passed directly to print
+#' @returns result of the call to print(...)
+#'
 #' @export
 gf_print <- intercept(base::print, supported_classes=get_supported_classes())
 
@@ -687,7 +687,7 @@ enable <- function(analysis_api_id=NULL,
         }
       },
       error=function(err) {
-        cat(pase0(err, "\n"), file=stderr())
+        cat(paste0(err, "\n"), file=stderr())
         return(NULL)
       })
 

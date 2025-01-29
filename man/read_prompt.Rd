@@ -21,6 +21,3 @@ input, or result of validate(input) if validate is supplied
 \description{
 Reads a prompt from stdin and performs optional validation
 }
-\examples{
-read_prompt("Enter username: ", validate=trimws)
-}

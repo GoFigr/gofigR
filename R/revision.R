@@ -1,3 +1,5 @@
+#' List of data types supported by GoFigr
+#'
 #' @export
 DATA_TYPES <- list(
   data_frame = "dataframe",
