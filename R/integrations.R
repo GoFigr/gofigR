@@ -1,13 +1,13 @@
-is_intercept_on <- function() {
-  return(.GlobalEnv[["gofigr_intercept_on"]])
+is_intercept_on <- function(env=.GlobalEnv) {
+  return(env[["gofigr_intercept_on"]])
 }
 
-intercept_on <- function() {
-  assign("gofigr_intercept_on", TRUE, .GlobalEnv)
+intercept_on <- function(env=.GlobalEnv) {
+  assign("gofigr_intercept_on", TRUE, env)
 }
 
-intercept_off <- function() {
-  assign("gofigr_intercept_on", FALSE, .GlobalEnv)
+intercept_off <- function(env=.GlobalEnv) {
+  assign("gofigr_intercept_on", FALSE, env)
 }
 
 #' Suppresses any automatic GoFigr publication hooks.
@@ -60,19 +60,21 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
 #' Sets GoFigr options.
 #'
 #' @param options New options that will replace existing options.
+#' @param env Which environment to store the options in.
 #'
 #' @return NA
 #' @export
-set_options <- function(options) {
-  assign("gofigr_options", options, .GlobalEnv)
+set_options <- function(options, env=.GlobalEnv) {
+  assign("gofigr_options", options, env)
 }
 
 #' Gets configured GoFigr options.
+#' @param env Which environment to get the options from.
 #'
 #' @return GoFigr options, or NULL if not set.
 #' @export
-get_options <- function() {
-  return(.GlobalEnv[["gofigr_options"]])
+get_options <- function(env=.GlobalEnv) {
+  return(env[["gofigr_options"]])
 }
 
 infer_input_path <- function() {
@@ -584,9 +586,9 @@ gf_plot <- intercept(base::plot, supported_classes=get_supported_classes())
 #' @export
 gf_print <- intercept(base::print, supported_classes=get_supported_classes())
 
-intercept_base <- function() {
-  assign("plot", gf_plot, .GlobalEnv)
-  assign("print", gf_print, .GlobalEnv)
+intercept_base <- function(env=.GlobalEnv) {
+  assign("plot", gf_plot, env)
+  assign("print", gf_print, env)
 }
 
 

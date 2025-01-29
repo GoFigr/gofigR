@@ -4,7 +4,10 @@
 \alias{get_options}
 \title{Gets configured GoFigr options.}
 \usage{
-get_options()
+get_options(env = .GlobalEnv)
+}
+\arguments{
+\item{env}{Which environment to get the options from.}
 }
 \value{
 GoFigr options, or NULL if not set.

@@ -4,10 +4,12 @@
 \alias{set_options}
 \title{Sets GoFigr options.}
 \usage{
-set_options(options)
+set_options(options, env = .GlobalEnv)
 }
 \arguments{
 \item{options}{New options that will replace existing options.}
+
+\item{env}{Which environment to store the options in.}
 }
 \value{
 NA
