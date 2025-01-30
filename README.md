@@ -1,21 +1,12 @@
----
-editor_options: 
-  markdown: 
-    wrap: 120
----
-
 # gofigR
 
-gofigR is the R client for <https://gofigr.io>, a zero-effort reproducibility engine. It works with any R library which
-outputs to R graphics devices, but automatic figure detection and publishing is currently limited to ggplot.
+gofigR is the R client for <https://gofigr.io>, a zero-effort reproducibility engine. It works with any R library which outputs to R graphics devices, but automatic figure detection and publishing is currently limited to ggplot.
 
 ## Compatibility
 
-gofigR integrates with R markdown, both in `knitr` and in interactive sessions in RStudio. GoFigr also works in scripts.
-We tested with R 4.3.2 but any reasonably recent version should work.
+gofigR integrates with R markdown, both in `knitr` and in interactive sessions in RStudio. GoFigr also works in scripts. We tested with R 4.3.2 but any reasonably recent version should work.
 
-GoFigr will automatically publish all `ggplot` output assuming you call `gofigR::enable(auto_publish=TRUE)`. GoFigr will
-*not* publish old-style R plots unless you tell it to. See the "Usage" section below.
+GoFigr will automatically publish all `ggplot` output assuming you call `gofigR::enable(auto_publish=TRUE)`. GoFigr will *not* publish old-style R plots unless you tell it to. See the "Usage" section below.
 
 ## Installation
 
@@ -69,8 +60,7 @@ Configuration saved to /Users/maciej/.gofigr. Happy analysis!
 
 ## Usage
 
-To enable GoFigr, simply call `enable` in your setup chunk. `analysis_name` specifies the analysis under which all
-figures will be published (it will be created automatically if it doesn't exist).
+To enable GoFigr, simply call `enable` in your setup chunk. `analysis_name` specifies the analysis under which all figures will be published (it will be created automatically if it doesn't exist).
 
 ```` rmd
 ```{r setup, include=FALSE}
@@ -81,8 +71,7 @@ gofigR::enable(analysis_name="My first Rmd analysis",
 ```
 ````
 
-`auto_publish` is TRUE by default. Set it to FALSE to suppress automatic figure publication. You can still publish your
-figures manually.
+`auto_publish` is TRUE by default. Set it to FALSE to suppress automatic figure publication. You can still publish your figures manually.
 
 After calling `enable` you can knit your markdown as-is. However, you can also customize GoFigr through chunk options:
 
@@ -104,13 +93,11 @@ plot(pressure)
 
 ## Automatic output capture
 
-If `auto_publish` is on, GoFigr will intercept all calls to `plot` and `print` and publish the results if they are from
-a compatible library (at the moment, only ggplot).
+If `auto_publish` is on, GoFigr will intercept all calls to `plot` and `print` and publish the results if they are from a compatible library (at the moment, only ggplot).
 
 ## Manual capture
 
-To capture output from old-style R plotting or from other libraries, including when the plot is built iteratively across
-multiple expressions, wrap your code in `gofigR::capture`:
+To capture output from old-style R plotting or from other libraries, including when the plot is built iteratively across multiple expressions, wrap your code in `gofigR::capture`:
 
 ```         
 gofigR::capture({
@@ -119,11 +106,9 @@ gofigR::capture({
 }, data=pressure)
 ```
 
-This is handy when you build a plot iteratively. For example, you may call `plot(...)` first, followed by a call to
-`text()` to add annotations, or `legend()` to place the legend.
+This is handy when you build a plot iteratively. For example, you may call `plot(...)` first, followed by a call to `text()` to add annotations, or `legend()` to place the legend.
 
-Note the optional `data` argument following the expression. It specifies the data which you want to associate with the
-figure -- it will show up under "files" (as `.RDS`) once published.
+Note the optional `data` argument following the expression. It specifies the data which you want to associate with the figure -- it will show up under "files" (as `.RDS`) once published.
 
 ## Adding support for other plotting libraries
 
