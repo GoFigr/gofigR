@@ -1,9 +1,12 @@
+#' List of data types supported by GoFigr
+#'
 #' @export
 DATA_TYPES <- list(
   data_frame = "dataframe",
   code = "code",
   image = "image",
-  text = "text")
+  text = "text",
+  file = "file")
 
 #' Fetches a revision given an API ID.
 #'
@@ -14,6 +17,20 @@ DATA_TYPES <- list(
 #' @export
 get_revision <- function(gf, api_id) {
   response_to_JSON(gofigr_GET(gf, paste0("revision/", api_id)))
+}
+
+#' Gets the full URL for a revision
+#'
+#' @param rev revision object
+#'
+#' @return URL, a string
+#' @export
+get_revision_url <- function(rev) {
+  if(is.null(rev) || is.null(rev$api_id)) {
+    return(NULL)
+  }
+
+  paste0(APP_URL, "/r/", rev$api_id)
 }
 
 #' Creates a new revision

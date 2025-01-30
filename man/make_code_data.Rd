@@ -15,13 +15,13 @@ make_code_data(
 \arguments{
 \item{name}{name of this code object}
 
+\item{contents_or_file}{contents, a character string or file object}
+
 \item{language}{programming language, e.g. Python or R}
 
 \item{format}{not supported at the moment; please use the default}
 
 \item{metadata}{metadata associated with this object}
-
-\item{contents}{contents, a character string or file object}
 }
 \value{
 GoFigr data object

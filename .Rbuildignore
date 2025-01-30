@@ -1,3 +1,11 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^example\.*R
+examples/*
+.*RDS
+.*\.png
+^cran-comments\.md$
+gofigR.*\.tar.gz
+.*\.sh
+tmp.*
+.*\.pdf

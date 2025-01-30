@@ -36,7 +36,7 @@ make_text_data <- function(name, contents, metadata=NULL) {
 #' Creates a GoFigr data object storing source code
 #'
 #' @param name name of this code object
-#' @param contents contents, a character string or file object
+#' @param contents_or_file contents, a character string or file object
 #' @param language programming language, e.g. Python or R
 #' @param format not supported at the moment; please use the default
 #' @param metadata metadata associated with this object
@@ -94,6 +94,46 @@ make_image_data <- function(name, file_or_raw, format, is_watermarked,
                        metadata=metadata, data=data))
 }
 
+image_to_html <- function(data) {
+  contents <- base64enc::base64encode(data$data)
+  return(paste0("<img src=\"",
+                "data:image;base64,",
+                contents,
+                "\"/>"))
+}
+
+#' Creates a GoFigr data object storing file data
+#'
+#' @param name name of this file
+#' @param file_or_raw image data, either a file or a raw vector
+#' @param path file path
+#' @param metadata metadata associated with this file
+#'
+#' @return GoFigr data object
+#' @export
+make_file_data <- function(name, file_or_raw, path=NULL, metadata=NULL) {
+  if(is.null(metadata)) {
+    metadata <- list()
+  }
+
+  if(is.character(file_or_raw)) {
+    path <- file_or_raw
+  }
+
+  metadata$path <- path
+
+  if(inherits(file_or_raw, "connection") || is.character(file_or_raw)) {
+    data <- readr::read_file_raw(file_or_raw)
+  } else if(is.raw(file_or_raw)) {
+    data <- file_or_raw
+  } else {
+    stop("Unsupported image data input. Please supply a file, a file path, or a raw vector.")
+  }
+
+  return(make_raw_data(name, DATA_TYPES$file,
+                       metadata=metadata, data=data))
+}
+
 #' Creates a GoFigr data object storing data.frame/tabular data
 #'
 #' @param name name of this data object
@@ -129,7 +169,7 @@ encode_raw_data <- function(data) {
   if(identical(data$data, raw(0))) {
     datum <- ""
   } else {
-    datum <- base64encode(data$data)
+    datum <- base64enc::base64encode(data$data)
   }
 
   return(list(
@@ -142,11 +182,11 @@ encode_raw_data <- function(data) {
 
 #' Default print representation of GoFigr data objects.
 #'
-#' @param obj object to print
+#' @param x object to print
 #' @param ... passed to cat
 #'
 #' @return NA
 #' @export
-print.gofigrdata <- function(obj, ...) {
-  cat(paste0("GoFigr data (\"", obj$name, "\", ", obj$type, "): ", length(obj$data), " bytes"), ...)
+print.gofigrdata <- function(x, ...) {
+  cat(paste0("GoFigr data (\"", x$name, "\", ", x$type, "): ", length(x$data), " bytes"), ...)
 }

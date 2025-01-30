@@ -2,15 +2,15 @@
 % Please edit documentation in R/watermark.R
 \name{watermark_generator}
 \alias{watermark_generator}
-\title{Makes a watermark generator. You can use the result with enable_knitr(watermark=...).}
+\title{Makes a watermark generator. You can use the result with enable(watermark=...).}
 \usage{
 watermark_generator(
   show_qr = TRUE,
-  qr_size_px = c(150, 150),
-  link_size_px = c(825, 100),
+  qr_size_px = c(100, 100),
+  link_size_px = c(500, 100),
   link_bg = "#ffffff",
   font_color = "#000000",
-  font_size = 22,
+  font_size = 14,
   font = "mono"
 )
 }
@@ -33,5 +33,5 @@ watermark_generator(
 a function which you can pass to enable_knitr(watermark)
 }
 \description{
-Makes a watermark generator. You can use the result with enable_knitr(watermark=...).
+Makes a watermark generator. You can use the result with enable(watermark=...).
 }

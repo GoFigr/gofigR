@@ -7,7 +7,7 @@
 login_with_username(max_attempts)
 }
 \arguments{
-\item{max_attempts}{}
+\item{max_attempts}{maximum number of login attempts before giving up}
 }
 \value{
 GoFigr client

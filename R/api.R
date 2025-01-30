@@ -18,10 +18,6 @@ CONFIG_PATH = file.path(path.expand('~'), ".gofigr")
 #'
 #' @return parsed configuration or empty list if not available
 #' @export
-#'
-#' @examples
-#' read_config()
-#' read_config("~/.gofigr")
 read_config <- function(path=CONFIG_PATH) {
   if(!file.exists(path)) {
     return(list())
@@ -85,9 +81,9 @@ default_if_null <- function(x, default) {
 #' @export
 #'
 #' @examples
-#' gofigr_client()  # use config from ~/.gofigr or environment variables
-#' gofigr_client(username="joe", password="abc123") # password login
-#' gofigr_client(api_key="abcdef0123456789") # API key login
+#' \dontrun{gofigr_client()  # use config from ~/.gofigr or environment variables}
+#' \dontrun{gofigr_client(username="joe", password="abc123") # password login}
+#' \dontrun{gofigr_client(api_key="abcdef0123456789") # API key login}
 gofigr_client <- function(username=NULL, password=NULL, api_key=NULL,
                   url=NULL, anonymous=FALSE, verbose=FALSE,
                   workspace=NULL, ignore_config=FALSE) {
@@ -118,12 +114,13 @@ gofigr_client <- function(username=NULL, password=NULL, api_key=NULL,
 
 #' Default print method for a GoFigr client.
 #'
-#' @param gf GoFigr client
+#' @param x GoFigr client
+#' @param ... passed to cat
 #'
 #' @return NA
 #' @export
-print.gofigr <- function(gf, ...) {
-  cat(paste0("GoFigr client at ", gf$url, "\n"))
+print.gofigr <- function(x, ...) {
+  cat(paste0("GoFigr client at ", x$url, "\n"))
 }
 
 #' Equivalent to cat but only outputs if GoFigr client is verbose.
@@ -281,18 +278,53 @@ gofigr_make_handler <- function(name, method) {
   }
 }
 
+#' Wrapper for httr::GET that automatically handles authentication.
+#' @param gf configured GoFigr client
+#' @param url URL to make the request to, relative to the API URL e.g. user/
+#' @param expected_status_code expected HTTP response code. We will throw
+#'  an exception if it differs.
+#' @param ... passed to the httr request function
+#' @return result of calling the underlying httr request function
 #' @export
 gofigr_GET <- gofigr_make_handler("GET", httr::GET)
 
+#' Wrapper for httr::POST that automatically handles authentication.
+#' @param gf configured GoFigr client
+#' @param url URL to make the request to, relative to the API URL e.g. user/
+#' @param expected_status_code expected HTTP response code. We will throw
+#'  an exception if it differs.
+#' @param ... passed to the httr request function
+#' @return result of calling the underlying httr request function
 #' @export
 gofigr_POST <- gofigr_make_handler("POST", httr::POST)
 
+#' Wrapper for httr::PUT that automatically handles authentication.
+#' @param gf configured GoFigr client
+#' @param url URL to make the request to, relative to the API URL e.g. user/
+#' @param expected_status_code expected HTTP response code. We will throw
+#'  an exception if it differs.
+#' @param ... passed to the httr request function
+#' @return result of calling the underlying httr request function
 #' @export
 gofigr_PUT <- gofigr_make_handler("PUT", httr::PUT)
 
+#' Wrapper for httr::PATCH that automatically handles authentication.
+#' @param gf configured GoFigr client
+#' @param url URL to make the request to, relative to the API URL e.g. user/
+#' @param expected_status_code expected HTTP response code. We will throw
+#'  an exception if it differs.
+#' @param ... passed to the httr request function
+#' @return result of calling the underlying httr request function
 #' @export
 gofigr_PATCH <- gofigr_make_handler("PATCH", httr::PATCH)
 
+#' Wrapper for httr::DELETE that automatically handles authentication.
+#' @param gf configured GoFigr client
+#' @param url URL to make the request to, relative to the API URL e.g. user/
+#' @param expected_status_code expected HTTP response code. We will throw
+#'  an exception if it differs.
+#' @param ... passed to the httr request function
+#' @return result of calling the underlying httr request function
 #' @export
 gofigr_DELETE <- gofigr_make_handler("DELETE", httr::DELETE)
 
@@ -303,9 +335,6 @@ gofigr_DELETE <- gofigr_make_handler("DELETE", httr::DELETE)
 #'
 #' @return user details
 #' @export
-#'
-#' @examples
-#' user_info()
 user_info <- function(gf) {
   response_to_JSON(gofigr_GET(gf, "user/"))[[1]]
 }

@@ -5,9 +5,6 @@
 #'
 #' @return workspace details
 #' @export
-#'
-#' @examples
-#' get_workspace("59da9bdb-2095-47a9-b414-c029f8a00e0e")
 get_workspace <- function(gf, api_id) {
   response_to_JSON(gofigr_GET(gf, paste0("workspace/", api_id)))
 }

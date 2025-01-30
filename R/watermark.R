@@ -10,7 +10,7 @@ stack_vertically <- function(images) {
   total_width <- do.call(max, lapply(infos, function(x) {x$width}))
   total_height <- do.call(sum, lapply(infos, function(x) {x$height}))
 
-  res <- magick::image_blank(width=total_width, height=total_height, color="#ffffff00")
+  res <- magick::image_blank(width=total_width, height=total_height, color="#fff")
 
   y_offset <- 0
   for(img in images) {
@@ -51,7 +51,7 @@ stack_horizontally <- function(images) {
 }
 
 
-#' Makes a watermark generator. You can use the result with enable_knitr(watermark=...).
+#' Makes a watermark generator. You can use the result with enable(watermark=...).
 #'
 #' @param show_qr show QR code
 #' @param qr_size_px two-element vector specifying the width, height of the QR code
@@ -64,17 +64,17 @@ stack_horizontally <- function(images) {
 #' @return a function which you can pass to enable_knitr(watermark)
 #' @export
 watermark_generator <- function(show_qr=TRUE,
-                                qr_size_px=c(150, 150),
-                                link_size_px=c(825, 100),
+                                qr_size_px=c(100, 100),
+                                link_size_px=c(500, 100),
                                 link_bg="#ffffff",
                                 font_color="#000000",
-                                font_size=22,
+                                font_size=14,
                                 font="mono") {
   function(revision, image) {
     url <- file.path(APP_URL, "r", get_api_id(revision))
 
     # Link
-    link_img <- mark <- magick::image_blank(width=link_size_px[[1]],
+    mark <- magick::image_blank(width=link_size_px[[1]],
                                             height=link_size_px[[2]],
                                             color=link_bg)
     link_img <- magick::image_annotate(mark, url,
@@ -93,21 +93,37 @@ watermark_generator <- function(show_qr=TRUE,
 
       link_img <- stack_horizontally(list(link_img, qr_img))
 
-      image_destroy(qr_img)
+      magick::image_destroy(qr_img)
     }
 
     # Composite
-    res <- stack_vertically(list(image, link_img))
-    image_destroy(link_img)
-    return(res)
+    if(!is.null(image)) {
+      res <- stack_vertically(list(image, link_img))
+      magick::image_destroy(link_img)
+      return(res)
+    } else {
+      return(link_img)
+    }
   }
 }
 
+#' Draws a watermark with a GoFigr link and a QR code
+#'
+#' @param revision GoFigr revision object for which to generate a watermark
+#' @param image Magick image to which to add the watermark
+#'
 #' @export
 QR_WATERMARK = watermark_generator()
 
+#' Draws a watermark with just a GoFigr link
+#'
+#' @param revision GoFigr revision object for which to generate a watermark
+#' @param image Magick image to which to add the watermark
+#'
 #' @export
 LINK_WATERMARK = watermark_generator(show_qr = FALSE)
 
+#' Does not draw any watermarks.
+#'
 #' @export
 NO_WATERMARK = NULL
