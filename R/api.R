@@ -35,7 +35,7 @@ read_config <- function(path=CONFIG_PATH) {
 
   return(data)
   }, error=function(err) {
-    cat(paste0("WARNING: Configuration ", path, " cannot be read: ", err, "\n", file=stderr()))
+    warning(paste0("WARNING: Configuration ", path, " cannot be read: ", err, "\n"))
     return(list())
   })
 }

@@ -16,7 +16,7 @@ read_prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
     tryCatch({
       val <- validate(res)
     }, error=function(err) {
-      cat(paste0(err, "\n"))
+      warning(paste0(err, "\n"))
       return(read_prompt(prompt, validate=validate, attempt = attempt + 1))
     })
   } else {
@@ -36,7 +36,7 @@ login_with_username <- function(max_attempts) {
     username <- read_prompt("Username: ")
     password <- getPass::getPass("Password: ")
 
-    cat("Testing connection...\n")
+    message("Testing connection...\n")
 
     tryCatch({
       gf <- gofigr_client(username=username,
@@ -45,15 +45,14 @@ login_with_username <- function(max_attempts) {
       info <- user_info(gf) # Make an authenticated request
 
       if(!is.null(info$username)) {
-        cat("  => Success\n")
+        message("  => Success\n")
         connection_ok <- TRUE
       } else {
         stop("Unknown error occurred.")
       }
     }, error=function(err) {
-      cat(paste0(err, "\n"))
-      cat("Connection failed. Please verify your username & password\
-          and try again.\n\n")
+      warning(paste0(err, "\n"))
+      warning("Connection failed. Please verify your username & password and try again.\n\n")
       attempt <<- attempt + 1
     })
   }
@@ -109,15 +108,15 @@ login_with_api_key <- function(gf, max_attempts) {
 #' @return No return value
 #' @export
 gfconfig <- function(max_attempts=3) {
-  cat("-------------------------------------------------------------------\n")
-  cat("Welcome to GoFigr! This wizard will help you get up and running.\n")
-  cat("-------------------------------------------------------------------\n\n")
+  message("-------------------------------------------------------------------\n")
+  message("Welcome to GoFigr! This wizard will help you get up and running.\n")
+  message("-------------------------------------------------------------------\n\n")
 
   gf_pw_auth <- login_with_username(max_attempts)
   api_key <- login_with_api_key(gf_pw_auth, max_attempts)
   gf <- gofigr_client(api_key=api_key)
 
-  cat("Fetching workspaces...\n")
+  message("Fetching workspaces...\n")
   worxs <- list_workspaces(gf)
   worx_df <- NULL
   id <- 1
@@ -129,7 +128,7 @@ gfconfig <- function(max_attempts=3) {
     id <<- id + 1
   })
 
-  print(knitr::kable(worx_df))
+  message(knitr::kable(worx_df))
 
   range <- paste0(1, "-", max(worx_df$Number))
   worx_id <- read_prompt(paste0("\nPlease select a default workspace (", range, "): "),
@@ -149,5 +148,5 @@ gfconfig <- function(max_attempts=3) {
   write(jsonlite::toJSON(config, auto_unbox=TRUE, pretty=TRUE), fileConn)
   close(fileConn)
 
-  invisible(cat(paste0("\nConfiguration saved to ", config_path, ". Happy analysis!\n")))
+  invisible(message(paste0("\nConfiguration saved to ", config_path, ". Happy analysis!\n")))
 }

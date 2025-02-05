@@ -1,13 +1,19 @@
-is_intercept_on <- function(env=.GlobalEnv) {
-  return(env[["gofigr_intercept_on"]])
+runtime_options <- structure(local({
+  intercept_enabled=FALSE
+  gofigr_options=NULL
+  environment()
+}))
+
+is_intercept_on <- function() {
+  return(runtime_options$intercept_enabled)
 }
 
-intercept_on <- function(env=.GlobalEnv) {
-  assign("gofigr_intercept_on", TRUE, env)
+intercept_on <- function() {
+  runtime_options$intercept_enabled <- TRUE
 }
 
-intercept_off <- function(env=.GlobalEnv) {
-  assign("gofigr_intercept_on", FALSE, env)
+intercept_off <- function() {
+  runtime_options$intercept_enabled <- FALSE
 }
 
 #' Suppresses any automatic GoFigr publication hooks.
@@ -60,21 +66,19 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
 #' Sets GoFigr options.
 #'
 #' @param options New options that will replace existing options.
-#' @param env Which environment to store the options in.
 #'
 #' @return NA
 #' @export
-set_options <- function(options, env=.GlobalEnv) {
-  assign("gofigr_options", options, env)
+set_options <- function(options) {
+  runtime_options$gofigr_options <- options
 }
 
 #' Gets configured GoFigr options.
-#' @param env Which environment to get the options from.
 #'
 #' @return GoFigr options, or NULL if not set.
 #' @export
-get_options <- function(env=.GlobalEnv) {
-  return(env[["gofigr_options"]])
+get_options <- function() {
+  return(runtime_options$gofigr_options)
 }
 
 infer_input_path <- function() {
@@ -88,8 +92,8 @@ infer_input_path <- function() {
 rstudio_chunk_callback <- function(chunkName, chunkCode) {
   opts <- get_options()
   if(opts$debug) {
-    cat(paste0("RStudio callback for chunk ", chunkName,
-               ". Deferred plots: ", length(opts$rstudio_deferred), "\n"))
+    message(paste0("RStudio callback for chunk ", chunkName,
+                   ". Deferred plots: ", length(opts$rstudio_deferred), "\n"))
   }
 
   images <- list()
@@ -100,11 +104,11 @@ rstudio_chunk_callback <- function(chunkName, chunkCode) {
       images <<- append(images, list(defplot(chunkName, chunkCode)))
     })
   }, error=function(cond) {
-    cat("Publishing failed\n")
-    cat(paste0(cond, "\n"), file=stderr())
+    warning("Publishing failed\n")
+    warning(paste0(cond, "\n"), file=stderr())
   }, finally={
     if(opts$debug) {
-      cat("Resetting deferred\n")
+      message("Resetting deferred\n")
     }
     opts$rstudio_deferred <- list()
   })
@@ -297,7 +301,7 @@ plot_script <- function(..., base_func) {
 }
 
 print_revision <- function(rev, ...) {
-  cat(paste0(get_revision_url(rev), "\n"))
+  message(paste0(get_revision_url(rev), "\n"))
 }
 
 #' Wraps a plotting function (e.g. heatmap.2) so that its output is intercepted
@@ -503,7 +507,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
   }
 
   if(gf_opts$debug) {
-    print(paste0("Starting publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
+    message(paste0("Starting publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
   }
 
   if(is.null(show)) {
@@ -516,7 +520,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
   png_path <- save_as_image_file("png", plot_obj, other_args, base_func, options)
   if(!file.exists(png_path)) {
     if(gf_opts$verbose) {
-      print("No output to publish\n")
+      warning("No output to publish\n")
     }
     return()
   }
@@ -545,20 +549,17 @@ publish <- function(plot_obj, figure_name, show=NULL,
   file.remove(png_path)
 
   if(gf_opts$verbose) {
-    cat(paste0("\"", fig$name, "\" at ", get_revision_url(rev), "\n"))
+    message(paste0("\"", fig$name, "\" at ", get_revision_url(rev), "\n"))
   }
 
   res <- show_plot(watermark_data)
-  if(!is.null(watermark_data)) {
-    #file.remove(watermark_data$png_path)
-  }
 
   if(!is.null(revision_callback)) {
     revision_callback(rev, image_data, other_data)
   }
 
   if(gf_opts$debug) {
-    print(paste0("Ending publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
+    message(paste0("Ending publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
   }
 
   return(res)
@@ -689,7 +690,7 @@ enable <- function(analysis_api_id=NULL,
         }
       },
       error=function(err) {
-        cat(paste0(err, "\n"), file=stderr())
+        warning(paste0(err, "\n"), file=stderr())
         return(NULL)
       })
 

@@ -11,6 +11,9 @@ LINK_WATERMARK(revision, image)
 
 \item{image}{Magick image to which to add the watermark}
 }
+\value{
+a function which you can pass to enable_knitr(watermark)
+}
 \description{
 Draws a watermark with just a GoFigr link
 }

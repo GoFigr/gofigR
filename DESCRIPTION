@@ -2,9 +2,12 @@ Package: gofigR
 Type: Package
 Title: Client for 'GoFigr.io'
 Version: 0.2.1
-Authors@R: person(family="Pacula", given="Maciej", email="maciej@gofigr.io", role=c("cph", "cre", "aut"))
+Authors@R: c(
+    person(family="Pacula", given="Maciej", email="maciej@gofigr.io", role=c("cre", "aut")),
+    person(given="Flagstaff Solutions, LLC", role=c("cph"))
+  )
 Description: Integrates with your 'RMarkdown' documents to automatically publish
-  figures to the 'GoFigr.io' service. Supports both 'knitr' and interactive 
+  figures to the <https://GoFigr.io> service. Supports both 'knitr' and interactive 
   execution within 'RStudio'.
 License: MIT + file LICENSE
 Encoding: UTF-8

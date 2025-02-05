@@ -10,6 +10,10 @@ An object of class \code{list} of length 5.
 \usage{
 DATA_TYPES
 }
+\value{
+list where names are human-readable names of data types, and values
+ are corresponding API types (strings).
+}
 \description{
 List of data types supported by GoFigr
 }

@@ -1,5 +1,7 @@
 #' List of data types supported by GoFigr
 #'
+#' @return list where names are human-readable names of data types, and values
+#'  are corresponding API types (strings).
 #' @export
 DATA_TYPES <- list(
   data_frame = "dataframe",

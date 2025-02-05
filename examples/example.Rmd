@@ -21,14 +21,6 @@ enable(analysis_name="My first Rmd analysis 2",
        debug=FALSE, auto_publish = TRUE)
 ```
 
-```{r html_test}
-func <- function() {
-  knitr::asis_output("<img src='https://gofigr.io/wp-content/uploads/2023/03/cropped-GoFigr-500-%C3%97-200-px-1500-%C3%97-340-px-1-2-300x78.png'/><img src='https://gofigr.io/wp-content/uploads/2023/03/cropped-GoFigr-500-%C3%97-200-px-1500-%C3%97-340-px-1-2-300x78.png'/>")
-  #knitr::asis_output("https://gofigr.io/wp-content/uploads/2023/03/cropped-GoFigr-500-%C3%97-200-px-1500-%C3%97-340-px-1-2-300x78.png")
-}
-
-func()
-```
 
 ## R Markdown
 
