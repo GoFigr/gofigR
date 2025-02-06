@@ -11,7 +11,7 @@ enable(
   create_analysis = TRUE,
   analysis_description = NULL,
   watermark = QR_WATERMARK,
-  auto_publish = TRUE,
+  auto_publish = FALSE,
   verbose = FALSE,
   debug = FALSE,
   show = "watermark"
@@ -30,7 +30,8 @@ enable(
 
 \item{watermark}{watermark class to use, e.g. QR_WATERMARK, LINK_WATERMARK or NO_WATERMARK}
 
-\item{auto_publish}{will publish all plots automatically if TRUE}
+\item{auto_publish}{will publish all plots automatically if TRUE. Note
+that setting this option will re-assign plot() and print() in the global environment.}
 
 \item{verbose}{whether to show verbose output}
 

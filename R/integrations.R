@@ -613,7 +613,8 @@ gofigr_knitr_hook <- function(before, options, envir, name, ...) {
 #' @param create_analysis if TRUE and analysis_name does not exist, it will be automatically created
 #' @param analysis_description analysis description if creating a new analysis
 #' @param watermark watermark class to use, e.g. QR_WATERMARK, LINK_WATERMARK or NO_WATERMARK
-#' @param auto_publish will publish all plots automatically if TRUE
+#' @param auto_publish will publish all plots automatically if TRUE. Note
+#'  that setting this option will re-assign plot() and print() in the global environment.
 #' @param verbose whether to show verbose output
 #' @param debug whether to show debugging information
 #' @param show which figure to display in the document: original, watermark, or hide. Note that this setting \
@@ -628,7 +629,7 @@ enable <- function(analysis_api_id=NULL,
                    create_analysis=TRUE,
                    analysis_description=NULL,
                    watermark=QR_WATERMARK,
-                   auto_publish=TRUE,
+                   auto_publish=FALSE,
                    verbose=FALSE,
                    debug=FALSE,
                    show="watermark") {

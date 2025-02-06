@@ -71,7 +71,7 @@ gofigR::enable(analysis_name="My first Rmd analysis",
 ```
 ````
 
-`auto_publish` is TRUE by default. Set it to FALSE to suppress automatic figure publication. You can still publish your figures manually.
+`auto_publish` is FALSE by default. Set it to TRUE to override `plot` and `print` and publish figures automatically.
 
 After calling `enable` you can knit your markdown as-is. However, you can also customize GoFigr through chunk options:
 
