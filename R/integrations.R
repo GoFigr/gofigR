@@ -698,11 +698,9 @@ enable <- function(analysis_api_id=NULL,
     return(environment())
   })))
 
+  intercept_on()
   if(auto_publish) {
-    intercept_on()
     intercept_base()
-  } else {
-    intercept_off()
   }
 
   knitr::knit_hooks$set(gofigr_hook=gofigr_knitr_hook)
