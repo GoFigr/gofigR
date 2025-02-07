@@ -573,19 +573,25 @@ is_supported <- function(x) {
   return(any(class(x) %in% get_supported_classes()))
 }
 
+make_invisible <- function(func) {
+  function(...) {
+    return(invisible(func(...)))
+  }
+}
+
 #' Plots and publishes an object (if supported)
 #' @param ... passed directly to plot
 #' @returns result of the call to plot(...)
 #'
 #' @export
-gf_plot <- intercept(base::plot, supported_classes=get_supported_classes())
+gf_plot <- make_invisible(intercept(base::plot, supported_classes=get_supported_classes()))
 
 #' Prints and publishes an object (if supported)
 #' @param ... passed directly to print
 #' @returns result of the call to print(...)
 #'
 #' @export
-gf_print <- intercept(base::print, supported_classes=get_supported_classes())
+gf_print <- make_invisible(intercept(base::print, supported_classes=get_supported_classes()))
 
 intercept_base <- function(env=.GlobalEnv) {
   assign("plot", gf_plot, env)
