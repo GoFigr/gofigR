@@ -38,7 +38,7 @@ You can also embed plots, for example:
 lapply(1:2, function(i) {
   gofigR::capture({
     #plot(pressure)
-    plot(pressure, main=paste0("Plot ", i))
+    plot(pressure, main=paste0("Pressure ", i))
   }, pressure)
 })
 ```
@@ -64,10 +64,15 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 temperatures <- c(22, 27, 26, 24, 23, 26, 28)
 
 # bar plot of temperatures vector
-gofigR::capture({
-  print("Call")
-barplot(temperatures)
-})
+#gofigR::capture({
+#barplot(temperatures)
+#})
+
+for(x in 1:10) {
+
+print(sys.frames())
+  Sys.sleep(1)
+}
 ```
 
 ```{r ggplot}

@@ -16,6 +16,18 @@ intercept_off <- function() {
   runtime_options$intercept_enabled <- FALSE
 }
 
+get_rstudio_file_path <- function() {
+  tryCatch({
+    if(interactive() && rstudioapi::isAvailable()) {
+      return(rstudioapi::getSourceEditorContext()$path)
+    } else {
+      return(NULL)
+    }
+  }, error=function(err) {
+    return(NULL)
+  })
+}
+
 #' Suppresses any automatic GoFigr publication hooks.
 #'
 #' @param func function in which to suppress intercepts
@@ -35,6 +47,14 @@ suppress <- function(func) {
        }
      })
  }
+}
+
+check_configured <- function(response=warning) {
+  if(is.null(get_options())) {
+    response("GoFigr not configured. Did you call enable()?")
+    return(FALSE)
+  }
+  return(TRUE)
 }
 
 #' Captures output of an expression and publishes it to GoFigr. This function
@@ -70,7 +90,16 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
 #' @return NA
 #' @export
 set_options <- function(options) {
-  runtime_options$gofigr_options <- options
+  key <- get_rstudio_file_path()
+  if(is.null(key)) {
+    runtime_options$gofigr_options <- options
+  } else {
+    if(is.null(runtime_options$gofigr_options)) {
+      runtime_options$gofigr_options <- list()
+    }
+
+    runtime_options$gofigr_options[[key]] <- options
+  }
 }
 
 #' Gets configured GoFigr options.
@@ -78,7 +107,12 @@ set_options <- function(options) {
 #' @return GoFigr options, or NULL if not set.
 #' @export
 get_options <- function() {
-  return(runtime_options$gofigr_options)
+  key <- get_rstudio_file_path()
+  if(is.null(key)) {
+    return(runtime_options$gofigr_options)
+  } else {
+    return(runtime_options$gofigr_options[[key]])
+  }
 }
 
 infer_input_path <- function() {
@@ -89,9 +123,18 @@ infer_input_path <- function() {
   }
 }
 
+is_debug_on <- function() {
+  opts <- get_options()
+  if(is.null(opts)) {
+    return(FALSE)
+  } else {
+    return(opts$debug)
+  }
+}
+
 rstudio_chunk_callback <- function(chunkName, chunkCode) {
   opts <- get_options()
-  if(opts$debug) {
+  if(is_debug_on()) {
     message(paste0("RStudio callback for chunk ", chunkName,
                    ". Deferred plots: ", length(opts$rstudio_deferred), "\n"))
   }
@@ -107,7 +150,7 @@ rstudio_chunk_callback <- function(chunkName, chunkCode) {
     warning("Publishing failed\n")
     warning(paste0(cond, "\n"), file=stderr())
   }, finally={
-    if(opts$debug) {
+    if(is_debug_on()) {
       message("Resetting deferred\n")
     }
     opts$rstudio_deferred <- list()
@@ -324,6 +367,8 @@ intercept <- function(plot_func, supported_classes=NULL, force=FALSE) {
   function(...) {
     if(!is_intercept_on() && !force) {
       return(base_func(...))
+    } else if(!check_configured()) {
+      return(base_func(...))
     }
 
     tryCatch({
@@ -506,7 +551,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
     }
   }
 
-  if(gf_opts$debug) {
+  if(is_debug_on()) {
     message(paste0("Starting publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
   }
 
@@ -558,7 +603,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
     revision_callback(rev, image_data, other_data)
   }
 
-  if(gf_opts$debug) {
+  if(is_debug_on()) {
     message(paste0("Ending publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
   }
 
