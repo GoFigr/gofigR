@@ -2,6 +2,7 @@
 
 S3method(print,gofigr)
 S3method(print,gofigrdata)
+export(CONFIG_PATH)
 export(DATA_TYPES)
 export(LINK_WATERMARK)
 export(NO_WATERMARK)

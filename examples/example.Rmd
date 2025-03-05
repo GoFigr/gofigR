@@ -2,7 +2,7 @@
 title: "Getting started with GoFigr for R"
 author: "Maciej Pacula"
 date: '`r Sys.Date()`'
-output: pdf_document
+output: html_document
 
 
 ---
@@ -13,8 +13,7 @@ library(ggplot2)
 
 
 knitr::opts_chunk$set(echo = TRUE)
-enable(analysis_name="Getting started with GoFigr for R", auto_publish = TRUE,
-       watermark=gofigR::QR_WATERMARK)
+enable(analysis_name="Getting started with GoFigr for R")
 ```
 
 
@@ -26,7 +25,7 @@ environment details, and figure data.
 
 ## Manual figure capture
 
-```{r manual_capture, fig.width=5, fig.height=4, gofigr_on=TRUE}
+```{r manual_capture, fig.width=5, fig.height=4}
 library(RColorBrewer)
 
 gofigR::capture({
