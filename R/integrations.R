@@ -77,7 +77,7 @@ capture <- function(expr, data=NULL, env=parent.frame()) {
       res <- eval(rlang::get_expr(quos),
                   envir = rlang::get_env(quos))
       if(!is.null(res) && is_supported(res)) {
-        gf_plot(res) # Implicitly plot the return value
+        gf_print(res) # Implicitly plot the return value
       }
   }, force=TRUE)
   invisible(wrapper(data))
@@ -524,18 +524,23 @@ check_show_setting <- function(show) {
 }
 
 publish <- function(plot_obj, figure_name, show=NULL,
-                    input_path=NULL, chunk_code=NULL, image_formats=c("svg", "eps"),
+                    input_path=NULL, chunk_code=NULL, image_formats=c("eps"),
                     other_args=list(), base_func=base::plot,
                     options=list(), revision_callback=NULL) {
-  show_plot <- function(watermark_data) {
+  show_plot <- function(rev, watermark_data) {
     if(show == "original" || is.null(watermark_data)) {
       do.call(base_func, append(list(plot_obj), other_args))
     } else if(show == "watermark") {
       opts <- get_options()
-      img_elt <- image_to_html(watermark_data$data_object[[1]])
-      opts$knitr_deferred <- append(opts$knitr_deferred, list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
-                                                                    img_elt, "</div>"))))
-      return(invisible(NULL))
+      if(is.null(options$dev) || options$dev == "png") {
+        img_elt <- image_to_html(watermark_data$data_object[[1]])
+        opts$knitr_deferred <- append(opts$knitr_deferred, list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
+                                                                      img_elt, "</div>"))))
+        return(invisible(NULL))
+      } else {
+        do.call(base_func, append(list(plot_obj), other_args))
+        cat(paste0(get_revision_url(rev), "\n"))
+      }
     } else {
       return(invisible(NULL))
     }
@@ -597,7 +602,7 @@ publish <- function(plot_obj, figure_name, show=NULL,
     message(paste0("\"", fig$name, "\" at ", get_revision_url(rev), "\n"))
   }
 
-  res <- show_plot(watermark_data)
+  res <- show_plot(rev, watermark_data)
 
   if(!is.null(revision_callback)) {
     revision_callback(rev, image_data, other_data)

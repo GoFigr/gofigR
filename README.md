@@ -1,6 +1,6 @@
 # gofigR
 
-gofigR is the R client for <https://gofigr.io>, a zero-effort reproducibility engine. It works with any R library which outputs to R graphics devices, but automatic figure detection and publishing is currently limited to ggplot.
+gofigR is the R client for <https://gofigr.io>, a zero-effort reproducibility engine. It works with any R library which outputs to R graphics devices, with automatic publishing for `ggplot`.
 
 ## Compatibility
 
@@ -9,12 +9,6 @@ gofigR integrates with R markdown, both in `knitr` and in interactive sessions i
 GoFigr will automatically publish all `ggplot` output assuming you call `gofigR::enable(auto_publish=TRUE)`. GoFigr will *not* publish old-style R plots unless you tell it to. See the "Usage" section below.
 
 ## Installation
-
-``` r
-install.packages("gofigR")
-```
-
-You can also install the development version from GitHub:
 
 ``` r
 library(devtools)

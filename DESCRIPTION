@@ -1,7 +1,7 @@
 Package: gofigR
 Type: Package
 Title: Client for 'GoFigr.io'
-Version: 0.2.3
+Version: 0.2.4
 Authors@R: c(
     person(family="Pacula", given="Maciej", email="maciej@gofigr.io", role=c("cre", "aut")),
     person(given="Flagstaff Solutions, LLC", role=c("cph"))
@@ -15,6 +15,6 @@ URL: https://github.com/GoFigr/gofigR
 BugReports: https://github.com/GoFigr/gofigR/issues
 RoxygenNote: 7.3.2
 Imports: httr, jsonlite, knitr, base64enc, readr, magick, qrcode, 
-  getPass, textutils, scriptName, xfun, rlang, stringr, rstudioapi
+  getPass, textutils, scriptName, xfun, rlang, stringr, rstudioapi, rsvg
 Suggests:
   ggplot2, gplots
