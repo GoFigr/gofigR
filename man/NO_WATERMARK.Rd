@@ -10,6 +10,9 @@ An object of class \code{NULL} of length 0.
 \usage{
 NO_WATERMARK
 }
+\value{
+does not return anything (NULL)
+}
 \description{
 Does not draw any watermarks.
 }

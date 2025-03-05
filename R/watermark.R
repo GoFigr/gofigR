@@ -112,6 +112,7 @@ watermark_generator <- function(show_qr=TRUE,
 #' @param revision GoFigr revision object for which to generate a watermark
 #' @param image Magick image to which to add the watermark
 #'
+#' @return a function which you can pass to enable_knitr(watermark)
 #' @export
 QR_WATERMARK = watermark_generator()
 
@@ -120,10 +121,12 @@ QR_WATERMARK = watermark_generator()
 #' @param revision GoFigr revision object for which to generate a watermark
 #' @param image Magick image to which to add the watermark
 #'
+#' @return a function which you can pass to enable_knitr(watermark)
 #' @export
 LINK_WATERMARK = watermark_generator(show_qr = FALSE)
 
 #' Does not draw any watermarks.
 #'
+#' @return does not return anything (NULL)
 #' @export
 NO_WATERMARK = NULL
