@@ -155,7 +155,7 @@ split_args <- function(...) {
 #' @param base_func the function whose output we are trying to capture
 #'
 #' @return same as plot()
-plot_knitr <- function(..., base_func) {
+publish_knitr <- function(..., base_func) {
   options <- knitr::opts_current$get()
 
   # Is GoFigr disabled for current chunk?
@@ -200,7 +200,7 @@ parse_params <- function(chunk, patterns=knitr::all_patterns$md) {
 #' @param base_func the function whose output we are trying to capture
 #'
 #' @return same as plot()
-plot_rstudio <- function(..., base_func) {
+publish_rstudio <- function(..., base_func) {
   #base_plot_result <- base_func(...)
 
   args <- split_args(...)
@@ -233,7 +233,7 @@ plot_rstudio <- function(..., base_func) {
 #' @param base_func the function whose output we are trying to capture
 #'
 #' @return same as plot()
-plot_interactive <- function(..., base_func) {
+publish_interactive <- function(..., base_func) {
   args <- split_args(...)
 
   histfile <- tempfile()
@@ -253,7 +253,7 @@ plot_interactive <- function(..., base_func) {
 #' @param base_func the function whose output we are trying to capture
 #'
 #' @return same as plot()
-plot_script <- function(..., base_func) {
+publish_script <- function(..., base_func) {
   args <- split_args(...)
 
   publish(args$first, figure_name="Anonymous Figure",
@@ -302,21 +302,21 @@ intercept <- function(plot_func, supported_classes=NULL, force=FALSE) {
       rev <- NULL
       if(!is.null(knitr::current_input())) {
         # Running in knitr
-        rev <- plot_knitr(..., base_func=base_func)
+        rev <- publish_knitr(..., base_func=base_func)
       } else if(!interactive()) {
         # Running in a script
-        rev <- plot_script(..., base_func=base_func)
+        rev <- publish_script(..., base_func=base_func)
       } else if(interactive() && rstudioapi::isAvailable()) {
         # Running interactively in RStudio
         ext <- base::tolower(tools::file_ext(rstudioapi::getSourceEditorContext()$path))
         if(ext == "rmd") {
-          rev <- plot_rstudio(..., base_func=base_func)
+          rev <- publish_rstudio(..., base_func=base_func)
         } else {
-          rev <- plot_interactive(..., base_func=base_func)
+          rev <- publish_interactive(..., base_func=base_func)
         }
       } else if(interactive() && !rstudioapi::isAvailable()) {
         # Running interactive outside of RStudio
-        rev <- plot_interactive(..., base_func=base_func)
+        rev <- publish_interactive(..., base_func=base_func)
       } else {
         warning("GoFigr could not detect the execution context. Please contact support@gofigr.io.")
       }
@@ -478,8 +478,8 @@ save_as_image <- function(format, plot_obj, other_args, base_func, options) {
 }
 
 check_show_setting <- function(show) {
-  if(is.null(show) || !show %in% list("watermark", "original", "hide")) {
-    stop(paste0("Valid show values are watermark, original, or hide, but you passed: ", show))
+  if(is.null(show) || !show %in% list("watermark", "original")) {
+    stop(paste0("Valid show values are watermark or original, but you passed: ", show))
   }
 }
 

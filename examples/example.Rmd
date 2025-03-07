@@ -14,7 +14,7 @@ library(cowplot)
 
 
 knitr::opts_chunk$set(echo = TRUE)
-enable(analysis_name="Getting started with GoFigr for R")
+enable(analysis_name="Getting started with GoFigr for R", show="original")
 ```
 
 
