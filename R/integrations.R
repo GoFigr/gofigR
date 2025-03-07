@@ -148,6 +148,22 @@ split_args <- function(...) {
   return(list(first=first, rest=other_args))
 }
 
+#' Gets a title from a plot
+#'
+#' @param p plot object
+#'
+#' @return title or NULL
+#' @export
+get_title <- function(p) {
+  if(is.null(p)) {
+    return(NULL)
+  } else if(is(p, "ggplot")) {
+    return(p$labels$title)
+  } else {
+    return(NULL)
+  }
+}
+
 #' Replacement for plot() in a knitr context. Captures the plot and publishes
 #' it to GoFigr.
 #'
@@ -165,10 +181,7 @@ publish_knitr <- function(..., base_func) {
 
   args <- split_args(...)
 
-  figure_name <- options$gofigr_figure_name
-  if(is.null(figure_name)) {
-    figure_name <- options$label
-  }
+  figure_name <- get_title(args$first)
 
   if(is.null(figure_name)) {
     figure_name <- "Anonymous Figure"
@@ -207,12 +220,9 @@ publish_rstudio <- function(..., base_func) {
   plot_obj = args$first
   opts <- get_options()
 
-  figure_name <- NULL
-  if(is_ggplot(plot_obj)) {
-    figure_name <- plot_obj$labels$title
-  }
+  figure_name <- get_title(plot_obj)
 
-  if(is.null(figure_name) || trimws(figure_name) == "") {
+  if(is.null(figure_name)) {
     figure_name <- "Anonymous Figure"
     warning("Your figure lacks a name and will be published as Anonymous Figure.")
   }
