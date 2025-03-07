@@ -120,6 +120,32 @@ watermark_generator <- function(show_qr=TRUE,
   }
 }
 
+
+#' Applies a watermark to a plot object/function.
+#'
+#' @param qr pre-generated QR code, as an image
+#' @param plot_obj plot object
+#' @param plot_func plotting function
+#'
+#' @return ggplot object with the watermark applied
+#' @export
+ggwatermark <- function(qr, plot_obj, plot_func) {
+  p <- cowplot::ggdraw()
+
+  if(is_ggplot(plot_obj)) {
+    p <- p + cowplot::draw_plot(plot_obj,
+                                height=0.8, x=0.0, y=0.2)
+  } else {
+    p <- p + cowplot::draw_plot(plot_func,
+                                height=0.8, x=0.0, y=0.2)
+  }
+
+  p <- p + cowplot::draw_image(qr,
+                               x=0, y=0,
+                               height=0.2)
+  return(p)
+}
+
 #' Draws a watermark with a GoFigr link and a QR code
 #'
 #' @param revision GoFigr revision object for which to generate a watermark

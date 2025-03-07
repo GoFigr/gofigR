@@ -5,7 +5,13 @@
 \title{Wraps a plotting function (e.g. heatmap.2) so that its output is intercepted
 by GoFigr.}
 \usage{
-intercept(plot_func, supported_classes = NULL, force = FALSE)
+intercept(
+  plot_func,
+  supported_classes = NULL,
+  force = FALSE,
+  data = NULL,
+  figure_name = NULL
+)
 }
 \arguments{
 \item{plot_func}{function to intercept}
@@ -14,6 +20,10 @@ intercept(plot_func, supported_classes = NULL, force = FALSE)
 instance of any of these classes}
 
 \item{force}{force intercept even if auto_publish is off}
+
+\item{data}{data to publish with the figure}
+
+\item{figure_name}{name of the figure, if different from default}
 }
 \value{
 intercepted function

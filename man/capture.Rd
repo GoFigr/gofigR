@@ -6,10 +6,12 @@
 is helpful if you have multiple function calls which incrementally build a
 single figure.}
 \usage{
-capture(expr, data = NULL, env = parent.frame())
+capture(expr, name = NULL, data = NULL, env = parent.frame())
 }
 \arguments{
 \item{expr}{expression which generates your figure}
+
+\item{name}{figure name. Use NULL to infer automatically}
 
 \item{data}{input data to publish with the figure}
 

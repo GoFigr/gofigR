@@ -11,7 +11,8 @@ watermark_generator(
   link_bg = "#ffffff",
   font_color = "#000000",
   font_size = 14,
-  font = "mono"
+  font = "mono",
+  dynamic_size = TRUE
 )
 }
 \arguments{
@@ -28,6 +29,9 @@ watermark_generator(
 \item{font_size}{font size for the link}
 
 \item{font}{font name or family, e.g. "mono"}
+
+\item{dynamic_size}{whether to automatically adjust the watermark size
+depending on the size of the current graphics device}
 }
 \value{
 a function which you can pass to enable_knitr(watermark)

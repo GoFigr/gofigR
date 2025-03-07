@@ -11,7 +11,7 @@ enable(
   create_analysis = TRUE,
   analysis_description = NULL,
   watermark = QR_WATERMARK,
-  auto_publish = FALSE,
+  auto_publish = TRUE,
   verbose = FALSE,
   debug = FALSE,
   show = "watermark"
