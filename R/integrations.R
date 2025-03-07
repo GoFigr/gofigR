@@ -132,44 +132,6 @@ is_debug_on <- function() {
   }
 }
 
-rstudio_chunk_callback <- function(chunkName, chunkCode) {
-  opts <- get_options()
-  if(is_debug_on()) {
-    message(paste0("RStudio callback for chunk ", chunkName,
-                   ". Deferred plots: ", length(opts$rstudio_deferred), "\n"))
-  }
-
-  images <- list()
-
-  tryCatch({
-    chunkCode <- textutils::HTMLdecode(chunkCode)
-    lapply(opts$rstudio_deferred, function(defplot) {
-      images <<- append(images, list(defplot(chunkName, chunkCode)))
-    })
-  }, error=function(cond) {
-    warning("Publishing failed\n")
-    warning(paste0(cond, "\n"), file=stderr())
-  }, finally={
-    if(is_debug_on()) {
-      message("Resetting deferred\n")
-    }
-    opts$rstudio_deferred <- list()
-  })
-
-  filtered_images <- Filter(function(img) {"gofigrdata" %in% class(img)},
-                            images)
-
-  if(length(filtered_images) == 0) {
-    return(list())
-  } else {
-  return(list(html=do.call(paste0, lapply(filtered_images, function(img) {
-    img_elt <- image_to_html(img)
-    return(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
-                  img_elt, "</div>"))
-    }))))
-  }
-}
-
 split_args <- function(...) {
   args <- list(...)
 
@@ -239,66 +201,28 @@ parse_params <- function(chunk, patterns=knitr::all_patterns$md) {
 #'
 #' @return same as plot()
 plot_rstudio <- function(..., base_func) {
-  base_plot_result <- base_func(...)
+  #base_plot_result <- base_func(...)
 
   args <- split_args(...)
   plot_obj = args$first
   opts <- get_options()
 
-  opts$rstudio_deferred <- append(opts$rstudio_deferred, function(chunkName, chunkCode) {
-    options <- parse_params(chunkCode)
+  figure_name <- NULL
+  if(is_ggplot(plot_obj)) {
+    figure_name <- plot_obj$labels$title
+  }
 
-    # Is GoFigr disabled for current chunk?
-    if(identical(options$gofigr_on, FALSE)) {
-      return(NULL)
-    }
+  if(is.null(figure_name) || trimws(figure_name) == "") {
+    figure_name <- "Anonymous Figure"
+    warning("Your figure lacks a name and will be published as Anonymous Figure.")
+  }
 
-    figure_name <- options$gofigr_figure_name
-    if(is.null(figure_name)) {
-      figure_name <- chunkName
-    }
-
-    if(is.null(figure_name)) {
-      figure_name <- "Anonymous Figure"
-      warning("Your figure lacks a name and will be published as Anonymous Figure.")
-    }
-
-    result <- NULL
-    revision_callback <- function(revision, image_data, ...) {
-      wm <- base::Filter(function(im) {
-           tolower(im$metadata$format) == "png" && im$metadata$is_watermarked
-         }, image_data)
-
-      non_wm <- Filter(function(im) {
-        tolower(im$metadata$format) == "png" && !im$metadata$is_watermarked
-      }, image_data)
-
-      # Figure out which image to show
-      if(opts$show == "hide") {
-        result <<- NULL
-      } else if(opts$show == "original") {
-        result <<- if(length(non_wm) > 0) non_wm[[1]] else NULL
-      } else if(opts$show == "watermark") {
-        result <<- if(length(wm) > 0) wm[[1]] else NULL
-      } else {
-        stop(paste0("Invalid get_options()$show value: ", opts$show))
-      }
-    }
-
-    publish(args$first, figure_name=figure_name,
-            input_path=rstudioapi::getSourceEditorContext()$path,
-            chunk_code=chunkCode,
-            other_args=args$rest,
-            base_func=base_func,
-            options=options,
-            show="hide",
-            revision_callback = revision_callback)
-
-    return(result)
-    })
-
-
-  return(base_plot_result)
+  publish(args$first, figure_name=figure_name,
+          input_path=rstudioapi::getSourceEditorContext()$path,
+          chunk_code=NULL,
+          other_args=args$rest,
+          base_func=base_func,
+          options=list())
 }
 
 
@@ -320,9 +244,7 @@ plot_interactive <- function(..., base_func) {
           input_path=histfile,
           chunk_code=NULL,
           other_args=args$rest,
-          base_func=base_func,
-          show="original",
-          revision_callback=print_revision)
+          base_func=base_func)
 }
 
 #' Replacement for plot in a script. Captures the plot and publishes to GoFigr.
@@ -338,9 +260,7 @@ plot_script <- function(..., base_func) {
           input_path=scriptName::current_filename(),
           chunk_code=NULL,
           other_args=args$rest,
-          base_func=base_func,
-          show="original",
-          revision_callback=print_revision)
+          base_func=base_func)
 }
 
 print_revision <- function(rev, ...) {
@@ -361,7 +281,7 @@ print_revision <- function(rev, ...) {
 #' @examples
 #' heatmap.2 <- intercept(gplots::heatmap.2)
 intercept <- function(plot_func, supported_classes=NULL, force=FALSE) {
-  # Make sure we don't capture anything internally called by base_func
+  # Make sure we don't capture anything internally called by plot_func
   base_func <- suppress(plot_func)
 
   function(...) {
@@ -377,25 +297,65 @@ intercept <- function(plot_func, supported_classes=NULL, force=FALSE) {
         return(base_func(...))
       }
 
+      plot_obj <- split_args(...)$first
+
+      rev <- NULL
       if(!is.null(knitr::current_input())) {
         # Running in knitr
-        plot_knitr(..., base_func=base_func)
+        rev <- plot_knitr(..., base_func=base_func)
       } else if(!interactive()) {
         # Running in a script
-        plot_script(..., base_func=base_func)
+        rev <- plot_script(..., base_func=base_func)
       } else if(interactive() && rstudioapi::isAvailable()) {
         # Running interactively in RStudio
         ext <- base::tolower(tools::file_ext(rstudioapi::getSourceEditorContext()$path))
         if(ext == "rmd") {
-          plot_rstudio(..., base_func=base_func)
+          rev <- plot_rstudio(..., base_func=base_func)
         } else {
-          plot_interactive(..., base_func=base_func)
+          rev <- plot_interactive(..., base_func=base_func)
         }
       } else if(interactive() && !rstudioapi::isAvailable()) {
         # Running interactive outside of RStudio
-        plot_interactive(..., base_func=base_func)
+        rev <- plot_interactive(..., base_func=base_func)
       } else {
         warning("GoFigr could not detect the execution context. Please contact support@gofigr.io.")
+      }
+
+      gf_opts <- get_options()
+      show <- gf_opts$show
+
+      if(is_debug_on()) {
+        message(paste0("Preparing to display figure. Revision: ",
+                       if(!is.null(rev)) rev$api_id else "NULL",
+                       ". Show: ", show,
+                       ". Watermark not null: ", !is.null(gf_opts$watermark)))
+      }
+
+      if(!is.null(rev) && show == "watermark" && !is.null(gf_opts$watermark)) {
+        if(is_debug_on()) {
+          message("Showing watermark")
+        }
+
+        qr <- gf_opts$watermark(rev, NULL)
+        p <- cowplot::ggdraw()
+
+        if(is_ggplot(plot_obj)) {
+          p <- p + cowplot::draw_plot(plot_obj,
+                                      height=0.8, x=0.0, y=0.2)
+        } else {
+          p <- p + cowplot::draw_plot(function(){base_func(...)},
+                                      height=0.8, x=0.0, y=0.2)
+        }
+
+        p <- p + cowplot::draw_image(qr,
+                            x=0, y=0,
+                            height=0.2)
+        base::plot(p)
+      } else {
+        if(is_debug_on()) {
+          message("Showing original")
+        }
+
         base_func(...)
       }
     }, finally={
@@ -523,47 +483,20 @@ check_show_setting <- function(show) {
   }
 }
 
-publish <- function(plot_obj, figure_name, show=NULL,
+publish <- function(plot_obj, figure_name,
                     input_path=NULL, chunk_code=NULL, image_formats=c("eps"),
                     other_args=list(), base_func=base::plot,
-                    options=list(), revision_callback=NULL) {
-  show_plot <- function(rev, watermark_data) {
-    if(show == "original" || is.null(watermark_data)) {
-      do.call(base_func, append(list(plot_obj), other_args))
-    } else if(show == "watermark") {
-      opts <- get_options()
-      if(is.null(options$dev) || options$dev == "png") {
-        img_elt <- image_to_html(watermark_data$data_object[[1]])
-        opts$knitr_deferred <- append(opts$knitr_deferred, list(knitr::asis_output(paste0("<div style='margin-top: 1em; margin-bottom: 1em;'>",
-                                                                      img_elt, "</div>"))))
-        return(invisible(NULL))
-      } else {
-        do.call(base_func, append(list(plot_obj), other_args))
-        cat(paste0(get_revision_url(rev), "\n"))
-      }
-    } else {
-      return(invisible(NULL))
-    }
-  }
+                    options=list()) {
 
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
     warning("GoFigr hasn't been configured. Did you call gofigR::enable()?")
-    if(show) {
-      return(invisible(show_plot()))
-    } else {
-      return(invisible(NULL))
-    }
+    return(invisible(NULL))
   }
 
   if(is_debug_on()) {
     message(paste0("Starting publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
   }
-
-  if(is.null(show)) {
-    show <- gf_opts$show
-  }
-  check_show_setting(show)
 
   client <- gf_opts$client
 
@@ -602,17 +535,11 @@ publish <- function(plot_obj, figure_name, show=NULL,
     message(paste0("\"", fig$name, "\" at ", get_revision_url(rev), "\n"))
   }
 
-  res <- show_plot(rev, watermark_data)
-
-  if(!is.null(revision_callback)) {
-    revision_callback(rev, image_data, other_data)
-  }
-
   if(is_debug_on()) {
     message(paste0("Ending publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
   }
 
-  return(res)
+  return(rev)
 }
 
 get_supported_classes <- function() {
@@ -621,6 +548,10 @@ get_supported_classes <- function() {
 
 is_supported <- function(x) {
   return(any(class(x) %in% get_supported_classes()))
+}
+
+is_ggplot <- function(x) {
+  return(any(class(x) == "ggplot"))
 }
 
 make_invisible <- function(func) {
@@ -647,19 +578,6 @@ intercept_base <- function(env=.GlobalEnv) {
   assign("plot", gf_plot, env)
   assign("print", gf_print, env)
 }
-
-
-gofigr_knitr_hook <- function(before, options, envir, name, ...) {
-  if (!before) { # after the chunk has run
-    opts <- get_options()
-    tryCatch({
-      sapply(opts$knitr_deferred, knitr::knit_print)
-    }, finally={
-      opts$knitr_deferred <- list()
-    })
-  }
-}
-
 
 #' Enables GoFigr support.
 #'
@@ -706,13 +624,6 @@ enable <- function(analysis_api_id=NULL,
     stop("Please specify either analysis_api_id or analysis_name")
   }
 
-  old_opts <- get_options()
-  if(!is.null(old_opts) && !is.null(old_opts$rstudio_callback)) {
-    tryCatch({
-      suppressWarnings(rstudioapi::unregisterChunkCallback(old_opts$rstudio_callback))
-    })
-  }
-
   set_options(structure(local({
     client <- gf
     analysis <- ana
@@ -722,35 +633,6 @@ enable <- function(analysis_api_id=NULL,
     debug <- debug
     show <- show
 
-    # RStudio does not make chunk options available at run time, and we can't
-    # publish a figure without them (they include critical parameters like
-    # chunk label, figure size, etc.).
-    #
-    # However, chunk options are available in the chunk callback, so we defer
-    # publication until the callback and store plotting functions (closures)
-    # in the list below.
-    rstudio_deferred <- list()
-
-    # When running under knitr, there's no clean way to intercept
-    # the figure and show a watermarked version. That's because watermarking
-    # a figure changes its size, and that breaks some internal knitr
-    # assumtions and gives a visually poor output (letterboxed, wrong aspect ratio, etc.).
-    # To work around it, we suppress *all* figure display and store the
-    # watermarked figures as knitr::asis objects, and only print
-    # them in the gofigr_hook.
-    knitr_deferred <- list()
-
-    rstudio_callback <- tryCatch( # only works in RStudio
-      {
-        if(rstudioapi::isAvailable()) {
-          suppressWarnings(rstudioapi::registerChunkCallback(rstudio_chunk_callback))
-        }
-      },
-      error=function(err) {
-        warning(paste0(err, "\n"), file=stderr())
-        return(NULL)
-      })
-
     return(environment())
   })))
 
@@ -758,9 +640,6 @@ enable <- function(analysis_api_id=NULL,
   if(auto_publish) {
     intercept_base()
   }
-
-  knitr::knit_hooks$set(gofigr_hook=gofigr_knitr_hook)
-  knitr::opts_chunk$set(gofigr_hook=TRUE)
 
   return(invisible(get_options()))
 }

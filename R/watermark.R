@@ -60,6 +60,8 @@ stack_horizontally <- function(images) {
 #' @param font_color font color for the link
 #' @param font_size font size for the link
 #' @param font font name or family, e.g. "mono"
+#' @param dynamic_size whether to automatically adjust the watermark size
+#'  depending on the size of the current graphics device
 #'
 #' @return a function which you can pass to enable_knitr(watermark)
 #' @export
@@ -69,8 +71,19 @@ watermark_generator <- function(show_qr=TRUE,
                                 link_bg="#ffffff",
                                 font_color="#000000",
                                 font_size=14,
-                                font="mono") {
+                                font="mono",
+                                dynamic_size=TRUE) {
   function(revision, image) {
+    if(dynamic_size && !is.null(dev.list())) {
+      dimensions <- grDevices::dev.size("px")
+      w <- dimensions[1]
+      h <- dimensions[2]
+
+      qr_size_px <- c(w * 0.2, w * 0.2)
+      link_size_px <- c(w * 0.8, h * 0.2)
+      font_size <- as.integer(1.0 * font_size * w / 700)
+    }
+
     url <- file.path(APP_URL, "r", get_api_id(revision))
 
     # Link

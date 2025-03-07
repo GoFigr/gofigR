@@ -2,7 +2,7 @@
 title: "Getting started with GoFigr for R"
 author: "Maciej Pacula"
 date: '`r Sys.Date()`'
-output: html_document
+output: pdf_document
 
 
 ---
@@ -10,6 +10,7 @@ output: html_document
 ```{r setup, include=FALSE}
 library(gofigR)
 library(ggplot2)
+library(cowplot)
 
 
 knitr::opts_chunk$set(echo = TRUE)
@@ -25,7 +26,7 @@ environment details, and figure data.
 
 ## Manual figure capture
 
-```{r manual_capture, fig.width=5, fig.height=4}
+```{r manual_capture, fig.width=10, fig.height=10}
 library(RColorBrewer)
 
 gofigR::capture({
@@ -47,6 +48,7 @@ gofigR::capture({
 ```{r correlations}
 p <- ggplot(mtcars, aes(x=wt, y=mpg, color=cyl, size=cyl)) +
       geom_point() +
-      theme(legend.position="none")
+      theme(legend.position="none") + ggtitle("Correlations")
+
 plot(p)
 ```

@@ -1,12 +1,10 @@
 # gofigR
 
-gofigR is the R client for <https://gofigr.io>, a zero-effort reproducibility engine. It works with any R library which outputs to R graphics devices, with automatic publishing for `ggplot`.
+gofigR is the R client for <https://gofigr.io>, a zero-effort reproducibility engine.
 
 ## Compatibility
 
-gofigR integrates with R markdown, both in `knitr` and in interactive sessions in RStudio. GoFigr also works in scripts. We tested with R 4.3.2 but any reasonably recent version should work.
-
-GoFigr will automatically publish all `ggplot` output assuming you call `gofigR::enable(auto_publish=TRUE)`. GoFigr will *not* publish old-style R plots unless you tell it to. See the "Usage" section below.
+gofigR integrates with knitr and supports both HTML and PDF output. We tested with R 4.3.2 but any reasonably recent version should work.
 
 ## Installation
 
@@ -54,23 +52,21 @@ Configuration saved to /Users/maciej/.gofigr. Happy analysis!
 
 ## Usage
 
-To enable GoFigr, simply call `enable` in your setup chunk. `analysis_name` specifies the analysis under which all figures will be published (it will be created automatically if it doesn't exist).
+To enable GoFigr, simply call `enable_knitr` in your setup chunk. `analysis_name` specifies the analysis under which all figures will be published (it will be created automatically if it doesn't exist).
 
 ```` rmd
 ```{r setup, include=FALSE}
 library(gofigR)
 
-gofigR::enable(analysis_name="My first Rmd analysis",
-               auto_publish=TRUE)
+enable_knitr(analysis_name="My first Rmd analysis")
 ```
 ````
 
-`auto_publish` is FALSE by default. Set it to TRUE to override `plot` and `print` and publish figures automatically.
-
-After calling `enable` you can knit your markdown as-is. However, you can also customize GoFigr through chunk options:
+You can then knit your markdown as-is. However, you can also customize GoFigr through chunk options:
 
 -   `gofigr_figure_name`: manually specify the name of the figure
 -   `gofigr_on`: set to FALSE to disable GoFigr within a chunk
+-   `gofigr_im_options`: custom ImageMagick arguments for converting PDF to PNG. Defaults to `"-density 300"`.
 
 For example:
 
@@ -80,42 +76,10 @@ plot(pressure)
 ```
   
 ```{r pressure2, echo=FALSE, gofigr_on=FALSE}
-# Won't be published
 plot(pressure)
 ```
 ````
 
-## Automatic output capture
+## Limitations
 
-If `auto_publish` is on, GoFigr will intercept all calls to `plot` and `print` and publish the results if they are from a compatible library (at the moment, only ggplot).
-
-## Manual capture
-
-To capture output from old-style R plotting or from other libraries, including when the plot is built iteratively across multiple expressions, wrap your code in `gofigR::capture`:
-
-```         
-gofigR::capture({
-  plot(pressure, main="Pressure vs temperature")
-  text(50, 50, "My pretty figure")
-}, data=pressure)
-```
-
-This is handy when you build a plot iteratively. For example, you may call `plot(...)` first, followed by a call to `text()` to add annotations, or `legend()` to place the legend.
-
-Note the optional `data` argument following the expression. It specifies the data which you want to associate with the figure -- it will show up under "files" (as `.RDS`) once published.
-
-## Adding support for other plotting libraries
-
-If you have a plotting function which you use often and which you would like to auto-publish, you can use `intercept`:
-
-```         
-barplot <- gofigR::intercept(graphics::barplot)
-```
-
-Subsequent calls to `barplot` will then automatically publish to GoFigr.
-
-## Interactive use
-
-gofigR works best with `knitr`, but interactive sessions within RStudio are also supported.
-
-When running within RStudio, you will see both the original plots as well as their published & watermarked counterparts.
+gofigR currently only works when knit with `knitr`. Interactive sessions within RStudio are not currently supported (but coming soon!).
