@@ -5,6 +5,8 @@ date: "`r Sys.Date()`"
 output:
   html_document:
     df_print: paged
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ```{r setup, include=FALSE}
@@ -26,7 +28,7 @@ environment details, and figure data.
 
 ## Manual figure capture
 
-```{r manual_capture, fig.width=10, fig.height=10}
+```{r manual_capture, fig.width=5, fig.height=5}
 library(RColorBrewer)
 
 gofigR::capture({

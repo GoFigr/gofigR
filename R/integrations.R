@@ -172,111 +172,44 @@ get_title <- function(p) {
   }
 }
 
-#' Replacement for plot() in a knitr context. Captures the plot and publishes
-#' it to GoFigr.
-#'
-#' @param ... same as plot()
-#' @param base_func the function whose output we are trying to capture
-#'
-#' @return same as plot()
-publish_knitr <- function(..., base_func, data=NULL, figure_name=NULL) {
-  options <- knitr::opts_current$get()
-
-  # Is GoFigr disabled for current chunk?
-  if(identical(options$gofigr_on, FALSE)) {
-    return(base_func(...))
-  }
-
-  args <- split_args(...)
-
-  publish(args$first, figure_name=figure_name,
-          input_path=knitr::current_input(),
-          chunk_code=paste0(options$code, collapse="\n"),
-          other_args=args$rest,
-          base_func=base_func,
-          options=options,
-          data=data)
+print_revision <- function(rev, ...) {
+  message(paste0(get_revision_url(rev), "\n"))
 }
 
-parse_params <- function(chunk, patterns=knitr::all_patterns$md) {
-  header <- stringr::str_split(chunk, "\n")[[1]]
-  m <- stringr::str_match(header, patterns$chunk.begin)
-  m <- m[!is.na(m[, 1]), , drop=FALSE]
-  if(length(m) == 0) {
-    return(list()) # no params
-  } else {
-    return(xfun::csv_options(m[1, 3]))
-  }
-}
-
-#' Replacement for plot within RStudio. Captures the plot and publishes to GoFigr.
-#'
-#' @param ... same as plot()
-#' @param base_func the function whose output we are trying to capture
-#'
-#' @return same as plot()
-publish_rstudio <- function(..., base_func, data=NULL, figure_name=NULL) {
-  #base_plot_result <- base_func(...)
-
-  args <- split_args(...)
-  plot_obj = args$first
-  opts <- get_options()
-
-  publish(args$first, figure_name=figure_name,
-          input_path=rstudioapi::getSourceEditorContext()$path,
-          chunk_code=NULL,
-          other_args=args$rest,
-          base_func=base_func,
-          options=list(),
-          data=data)
-}
-
-
-#' Replacement for plot in an interactive session outside of RStudio (e.g. terminal).
-#' Captures the plot and publishes to GoFigr.
-#'
-#' @param ... same as plot()
-#' @param base_func the function whose output we are trying to capture
-#'
-#' @return same as plot()
-publish_interactive <- function(..., base_func, data=NULL, figure_name=NULL) {
-  args <- split_args(...)
-
+get_interactive_context <- function() {
   histfile <- tempfile()
   utils::savehistory(histfile)
 
-  if(is.null(figure_name)) {
-    figure_name <- get_title(plot_obj)
+  return(list(input_path=histfile,
+              chunk_code=NULL,
+              metadata=list(context="interactive")))
+}
+
+get_execution_context <- function() {
+  if(!is.null(knitr::current_input())) {
+    # Running in knitr
+    options <- knitr::opts_current$get()
+    return(list(input_path=knitr::current_input(),
+                chunk_code=paste0(options$code, collapse="\n"),
+                metadata=list(context='knitr',
+                              knitr_options=options)))
+  } else if(!interactive()) {
+    # Running in a script
+    return(list(input_path=scriptName::current_filename(),
+                chunk_code=NULL,
+                metadata=list(context='script')))
+  } else if(interactive() && rstudioapi::isAvailable()) {
+    # Running interactively in RStudio
+    list(input_path=rstudioapi::getSourceEditorContext()$path,
+         chunk_code=NULL,
+         metadata=list(context='RStudio'))
+  } else if(interactive() && !rstudioapi::isAvailable()) {
+    # Running interactive outside of RStudio
+    return(get_interactive_context())
+    } else {
+      warning("GoFigr could not detect the execution context. Please contact support@gofigr.io.")
+      return(list())
   }
-
-  on.exit({ file.remove(histfile) }, add=TRUE)
-  publish(args$first, figure_name=figure_name,
-          input_path=histfile,
-          chunk_code=NULL,
-          other_args=args$rest,
-          base_func=base_func,
-          data=data)
-}
-
-#' Replacement for plot in a script. Captures the plot and publishes to GoFigr.
-#'
-#' @param ... same as plot()
-#' @param base_func the function whose output we are trying to capture
-#'
-#' @return same as plot()
-publish_script <- function(..., base_func, data=NULL, figure_name=NULL) {
-  args <- split_args(...)
-
-  publish(args$first, figure_name=figure_name,
-          input_path=scriptName::current_filename(),
-          chunk_code=NULL,
-          other_args=args$rest,
-          base_func=base_func,
-          data=data)
-}
-
-print_revision <- function(rev, ...) {
-  message(paste0(get_revision_url(rev), "\n"))
 }
 
 #' Wraps a plotting function (e.g. heatmap.2) so that its output is intercepted
@@ -315,28 +248,15 @@ intercept <- function(plot_func,
 
       plot_obj <- split_args(...)$first
 
-      rev <- NULL
-      if(!is.null(knitr::current_input())) {
-        # Running in knitr
-        rev <- publish_knitr(..., base_func=base_func, data=data, figure_name=figure_name)
-      } else if(!interactive()) {
-        # Running in a script
-        rev <- publish_script(..., base_func=base_func, data=data, figure_name=figure_name)
-      } else if(interactive() && rstudioapi::isAvailable()) {
-        # Running interactively in RStudio
-        ext <- base::tolower(tools::file_ext(rstudioapi::getSourceEditorContext()$path))
-        if(ext == "rmd") {
-          rev <- publish_rstudio(..., base_func=base_func, data=data, figure_name=figure_name)
-        } else {
-          rev <- publish_interactive(..., base_func=base_func,
-                                     data=data, figure_name=figure_name)
-        }
-      } else if(interactive() && !rstudioapi::isAvailable()) {
-        # Running interactive outside of RStudio
-        rev <- publish_interactive(..., base_func=base_func, data=data, figure_name=figure_name)
-      } else {
-        warning("GoFigr could not detect the execution context. Please contact support@gofigr.io.")
-      }
+      context <- get_execution_context()
+
+      rev <- publish(plot_obj, figure_name=figure_name,
+              input_path=context$input_path,
+              chunk_code=context$chunk_code,
+              args=list(...),
+              base_func=base_func,
+              data=data,
+              metadata=context$metadata)
 
       gf_opts <- get_options()
       show <- gf_opts$show
@@ -363,34 +283,45 @@ intercept <- function(plot_func,
 
         base_func(...)
       }
+    }, error=function(err) {
+      warning(paste0("Error when publishing figure, will show original instead: ", err))
+      base_func(...)
     }, finally={
       intercept_on()
     })
   }
 }
 
-create_bare_revision <- function(client, fig, input_path, options) {
+create_bare_revision <- function(client, fig, input_path, metadata) {
   sess <- utils::sessionInfo()
   info <- utils::capture.output({base::print(sess)})
 
+  total_metadata <- list(input=input_path,
+                         `getwd`=getwd(),
+                         `R version`=paste0(info[[1]]),
+                         `R details`=sess$R.version,
+                         `Sys.info()`=as.list(Sys.info()))
+  for(name in names(metadata)) {
+    if("knitr_strict_list" %in% class(metadata[[name]])) {
+      total_metadata[[name]] <- do.call(list, metadata[[name]])
+    } else {
+      total_metadata[[name]] <- metadata[[name]]
+    }
+  }
+
   rev <-  gofigR::create_revision(client, fig,
-                                  metadata = list(input=input_path,
-                                                  `getwd`=getwd(),
-                                                  `R version`=paste0(info[[1]]),
-                                                  `R details`=sess$R.version,
-                                                  `Sys.info()`=as.list(Sys.info()),
-                                                  `options`=do.call(list, options)))
+                                  metadata = total_metadata)
 
   return(rev)
 }
 
 
-apply_watermark <- function(rev_bare, plot_obj, other_args, base_func, gf_opts) {
+apply_watermark <- function(rev_bare, plot_obj, args, base_func, gf_opts) {
   if(!is.null(gf_opts$watermark)) {
     watermarked_path <- tempfile(fileext=".png")
     qr <- gf_opts$watermark(rev_bare, NULL)
     p <- ggwatermark(qr, plot_obj, function() {
-        do.call(base_func, append(list(plot_obj), other_args))
+        do.call(base_func, args)
       })
     suppressMessages(ggsave(watermarked_path, plot=p))
 
@@ -441,9 +372,9 @@ annotate <- function(rev_bare, plot_obj, figure_name,
 }
 
 
-save_as_image_file <- function(format, plot_obj, other_args, base_func, options) {
+save_as_image_file <- function(format, plot_obj, args, base_func, options) {
   path <- tempfile(fileext=paste0(".", format))
-  do_plot <- function() { do.call(base_func, append(list(plot_obj), other_args)) }
+  do_plot <- function() { do.call(base_func, args) }
 
   p <- cowplot::ggdraw()
 
@@ -458,8 +389,8 @@ save_as_image_file <- function(format, plot_obj, other_args, base_func, options)
   return(path)
 }
 
-save_as_image <- function(format, plot_obj, other_args, base_func, options) {
-  path <- save_as_image_file(format, plot_obj, other_args, base_func, options)
+save_as_image <- function(format, plot_obj, args, base_func, options) {
+  path <- save_as_image_file(format, plot_obj, args, base_func, options)
   img_obj <- make_image_data("figure", path, format, FALSE)
   file.remove(path)
   return(img_obj)
@@ -473,9 +404,8 @@ check_show_setting <- function(show) {
 
 publish <- function(plot_obj, figure_name,
                     input_path=NULL, chunk_code=NULL, image_formats=c("eps"),
-                    other_args=list(), base_func=base::plot,
-                    options=list(),
-                    data=NULL) {
+                    args=list(), base_func=base::plot,
+                    data=NULL, metadata=list()) {
 
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
@@ -497,7 +427,7 @@ publish <- function(plot_obj, figure_name,
     warning("Your figure lacks a name and will be published as Anonymous Figure.")
   }
 
-  png_path <- save_as_image_file("png", plot_obj, other_args, base_func, options)
+  png_path <- save_as_image_file("png", plot_obj, args, base_func, options)
   if(!file.exists(png_path)) {
     if(gf_opts$verbose) {
       warning("No output to publish\n")
@@ -508,18 +438,18 @@ publish <- function(plot_obj, figure_name,
   fig <- gofigR::find_figure(gf_opts$client, gf_opts$analysis, figure_name, create=TRUE)
 
   # Create a bare revision to get API ID
-  rev_bare <- create_bare_revision(client, fig, input_path, options)
+  rev_bare <- create_bare_revision(client, fig, input_path, metadata)
 
   # Now that we have an API ID, apply the watermark
   image_data <- list(make_image_data("figure", png_path, "png", FALSE))
-  watermark_data <- apply_watermark(rev_bare, plot_obj, other_args, base_func, gf_opts)
+  watermark_data <- apply_watermark(rev_bare, plot_obj, args, base_func, gf_opts)
   if(!is.null(watermark_data)) {
     image_data <- append(image_data, watermark_data$data_object)
   }
 
   # Additional image formats
   image_data <- append(image_data, lapply(image_formats, function(fmt) {
-    save_as_image(fmt, plot_obj, other_args, base_func, options)
+    save_as_image(fmt, plot_obj, args, base_func, options)
   }))
   image_data <- image_data[!is.null(image_data)]
 
