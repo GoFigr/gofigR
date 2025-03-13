@@ -128,7 +128,10 @@ gfconfig <- function(max_attempts=3) {
     id <<- id + 1
   })
 
-  message(knitr::kable(worx_df))
+  lapply(1:length(worxs), function(id) {
+    wx <- worxs[[id]]
+    message(paste0(id, ". ", wx$name, " - ", wx$api_id))
+  })
 
   range <- paste0(1, "-", max(worx_df$Number))
   worx_id <- read_prompt(paste0("\nPlease select a default workspace (", range, "): "),
