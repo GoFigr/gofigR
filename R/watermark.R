@@ -75,7 +75,7 @@ watermark_generator <- function(show_qr=TRUE,
                                 dynamic_size=TRUE) {
   function(revision, image) {
     if(dynamic_size) {
-      if(!is.null(dev.list())) {
+      if(!is.null(grDevices::dev.list())) {
         dimensions <- grDevices::dev.size("px")
         w <- max(dimensions[1], 1920)
         h <- as.integer(1920.0 * dimensions[2] / dimensions[1])

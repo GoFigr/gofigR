@@ -5,19 +5,22 @@
 \title{Enables GoFigr support.}
 \usage{
 enable(
+  auto_publish = FALSE,
   analysis_api_id = NULL,
   analysis_name = NULL,
   workspace = NULL,
   create_analysis = TRUE,
   analysis_description = NULL,
   watermark = QR_WATERMARK,
-  auto_publish = TRUE,
   verbose = FALSE,
   debug = FALSE,
   show = "watermark"
 )
 }
 \arguments{
+\item{auto_publish}{will publish all plots automatically if TRUE. Note
+that setting this option will re-assign plot() and print() in the global environment.}
+
 \item{analysis_api_id}{Analysis API ID (if analysis_name is NULL)}
 
 \item{analysis_name}{Analysis name (if analysis_api_id is NULL)}
@@ -29,9 +32,6 @@ enable(
 \item{analysis_description}{analysis description if creating a new analysis}
 
 \item{watermark}{watermark class to use, e.g. QR_WATERMARK, LINK_WATERMARK or NO_WATERMARK}
-
-\item{auto_publish}{will publish all plots automatically if TRUE. Note
-that setting this option will re-assign plot() and print() in the global environment.}
 
 \item{verbose}{whether to show verbose output}
 

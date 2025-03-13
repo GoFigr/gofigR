@@ -165,7 +165,7 @@ split_args <- function(...) {
 get_title <- function(p) {
   if(is.null(p)) {
     return(NULL)
-  } else if(is(p, "ggplot")) {
+  } else if(inherits(p, "ggplot")) {
     return(p$labels$title)
   } else {
     return(NULL)
@@ -325,7 +325,7 @@ apply_watermark <- function(rev_bare, plot_obj, args, base_func, gf_opts) {
     p <- ggwatermark(qr, plot_obj, function() {
         do.call(base_func, args)
       })
-    suppressMessages(ggsave(watermarked_path, plot=p))
+    suppressMessages(ggplot2::ggsave(watermarked_path, plot=p))
 
     return(list(data_object=list(make_image_data("figure", watermarked_path, "png", TRUE)),
                 png_path=watermarked_path))
@@ -391,7 +391,7 @@ save_as_image_file <- function(format, plot_obj, args, base_func, options) {
     p <- p + cowplot::draw_plot(do_plot)
   }
 
-  suppressMessages(ggsave(path, plot=p))
+  suppressMessages(ggplot2::ggsave(path, plot=p))
 
   return(path)
 }
@@ -517,14 +517,14 @@ intercept_base <- function(env=.GlobalEnv) {
 
 #' Enables GoFigr support.
 #'
+#' @param auto_publish will publish all plots automatically if TRUE. Note
+#'  that setting this option will re-assign plot() and print() in the global environment.
 #' @param analysis_api_id Analysis API ID (if analysis_name is NULL)
 #' @param analysis_name Analysis name (if analysis_api_id is NULL)
 #' @param workspace API ID of the workspace
 #' @param create_analysis if TRUE and analysis_name does not exist, it will be automatically created
 #' @param analysis_description analysis description if creating a new analysis
 #' @param watermark watermark class to use, e.g. QR_WATERMARK, LINK_WATERMARK or NO_WATERMARK
-#' @param auto_publish will publish all plots automatically if TRUE. Note
-#'  that setting this option will re-assign plot() and print() in the global environment.
 #' @param verbose whether to show verbose output
 #' @param debug whether to show debugging information
 #' @param show which figure to display in the document: original, watermark, or hide. Note that this setting \
@@ -533,13 +533,13 @@ intercept_base <- function(env=.GlobalEnv) {
 #'
 #' @return named list of GoFigr options
 #' @export
-enable <- function(analysis_api_id=NULL,
+enable <- function(auto_publish=FALSE,
+                   analysis_api_id=NULL,
                    analysis_name=NULL,
                    workspace=NULL,
                    create_analysis=TRUE,
                    analysis_description=NULL,
                    watermark=QR_WATERMARK,
-                   auto_publish=TRUE,
                    verbose=FALSE,
                    debug=FALSE,
                    show="watermark") {

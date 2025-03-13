@@ -6,7 +6,7 @@ output:
   html_document:
     df_print: paged
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -16,7 +16,7 @@ library(cowplot)
 
 
 knitr::opts_chunk$set(echo = TRUE)
-gofigR::enable()
+gofigR::enable(TRUE)
 ```
 
 
