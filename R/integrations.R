@@ -77,14 +77,14 @@ capture <- function(expr,
 
   # GoFigr assumes that the first argument is the plot object, to be published
   # as an RDS file. Hence the "pointless" function(data) wrapper.
-  wrapper <- intercept(function(dummy) {
+  wrapper <- intercept(function() {
       res <- eval(rlang::get_expr(quos),
                   envir = rlang::get_env(quos))
       if(!is.null(res) && is_supported(res)) {
         gf_print(res) # Implicitly plot the return value
       }
   }, force=TRUE, data=data, figure_name=name)
-  invisible(wrapper(NULL))
+  invisible(wrapper())
 }
 
 #' Sets GoFigr options.
@@ -535,6 +535,12 @@ enable <- function(analysis_api_id=NULL,
                    debug=FALSE,
                    show="watermark") {
   check_show_setting(show)
+
+  context <- get_execution_context()
+  if(is.null(analysis_name) && !is.null(context$input_path)) {
+    analysis_name <- basename(context$input_path)
+    message(paste0("Analysis name: ", analysis_name))
+  }
 
   # Create the GoFigr client
   gf <- gofigr_client(workspace=workspace, verbose=verbose)
