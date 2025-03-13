@@ -16,7 +16,7 @@ library(cowplot)
 
 
 knitr::opts_chunk$set(echo = TRUE)
-enable()
+gofigR::enable()
 ```
 
 
@@ -42,7 +42,7 @@ gofigR::capture({
 
   coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
   heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
-}, name="Cars")
+}, data=mtcars)
 ```
 
 ## Automatic figure capture for ggplot2

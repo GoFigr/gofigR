@@ -74,13 +74,19 @@ watermark_generator <- function(show_qr=TRUE,
                                 font="mono",
                                 dynamic_size=TRUE) {
   function(revision, image) {
-    if(dynamic_size && !is.null(dev.list())) {
-      dimensions <- grDevices::dev.size("px")
-      w <- dimensions[1]
-      h <- dimensions[2]
+    if(dynamic_size) {
+      if(!is.null(dev.list())) {
+        dimensions <- grDevices::dev.size("px")
+        w <- max(dimensions[1], 1920)
+        h <- as.integer(1920.0 * dimensions[2] / dimensions[1])
 
-      qr_size_px <- c(w * 0.2, w * 0.2)
-      link_size_px <- c(w * 0.8, h * 0.2)
+      } else {
+        w <- 1920
+        h <- 1080
+      }
+
+      qr_size_px <- c(as.integer(w * 0.2), as.integer(w * 0.2))
+      link_size_px <- c(as.integer(w * 0.8), as.integer(h * 0.2))
       font_size <- as.integer(1.0 * font_size * w / 700)
     }
 

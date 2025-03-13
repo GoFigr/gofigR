@@ -201,6 +201,7 @@ get_execution_context <- function() {
   } else if(interactive() && rstudioapi::isAvailable()) {
     # Running interactively in RStudio
     list(input_path=rstudioapi::getSourceEditorContext()$path,
+         input_contents=paste0(rstudioapi::getSourceEditorContext()$contents, collapse="\n"),
          chunk_code=NULL,
          metadata=list(context='RStudio'))
   } else if(interactive() && !rstudioapi::isAvailable()) {
@@ -252,6 +253,7 @@ intercept <- function(plot_func,
 
       rev <- publish(plot_obj, figure_name=figure_name,
               input_path=context$input_path,
+              input_contents=context$input_contents,
               chunk_code=context$chunk_code,
               args=list(...),
               base_func=base_func,
@@ -343,7 +345,7 @@ capture_rds <- function(obj, name) {
 
 
 annotate <- function(rev_bare, plot_obj, figure_name,
-                     source_path, chunk_code=NULL,
+                     source_path, source_contents, chunk_code=NULL,
                      custom_data=NULL) {
   sess <- utils::sessionInfo()
   info <- utils::capture.output({base::print(sess)})
@@ -366,6 +368,11 @@ annotate <- function(rev_bare, plot_obj, figure_name,
 
   if(!is.null(source_path)) {
     data <- append(data, list(make_code_data("Input file", file(source_path),
+                                             tools::file_ext(source_path))))
+  }
+
+  if(!is.null(source_contents) && trimws(source_contents) != "") {
+    data <- append(data, list(make_code_data("Active document", source_contents,
                                              tools::file_ext(source_path))))
   }
   return(data)
@@ -403,7 +410,9 @@ check_show_setting <- function(show) {
 }
 
 publish <- function(plot_obj, figure_name,
-                    input_path=NULL, chunk_code=NULL, image_formats=c("eps"),
+                    input_path=NULL,
+                    input_contents=NULL,
+                    chunk_code=NULL, image_formats=c("eps"),
                     args=list(), base_func=base::plot,
                     data=NULL, metadata=list()) {
 
@@ -453,7 +462,7 @@ publish <- function(plot_obj, figure_name,
   }))
   image_data <- image_data[!is.null(image_data)]
 
-  other_data <- annotate(rev_bare, plot_obj, fig$name, input_path, chunk_code, data)
+  other_data <- annotate(rev_bare, plot_obj, fig$name, input_path, input_contents, chunk_code, data)
 
   rev <- gofigR::update_revision_data(client, rev_bare, silent=TRUE, new_data=append(image_data, other_data))
   file.remove(png_path)
