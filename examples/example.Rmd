@@ -12,7 +12,7 @@ library(cowplot)
 
 
 knitr::opts_chunk$set(echo = TRUE)
-gofigR::enable(TRUE, debug=TRUE, verbose=TRUE)
+gofigR::enable(TRUE)
 ```
 
 
@@ -24,7 +24,7 @@ environment details, and figure data.
 
 ## Manual figure capture
 
-```{r manual_capture, fig.width=5, fig.height=5}
+```{r manual_capture, fig.width=8, fig.height=8}
 library(RColorBrewer)
 
 gofigR::publish_base({
@@ -32,13 +32,13 @@ gofigR::publish_base({
   text(200, 50, "Note the non-linear relationship")
 }, data=pressure, figure_name="Pressure vs temperature")
 
-gofigR::capture({
+gofigR::publish_base({
   # The mtcars dataset:
   data <- as.matrix(mtcars)
 
   coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
   heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
-}, data=mtcars, name="Cars")
+}, data=mtcars, figure_name="Cars")
 ```
 
 ## Automatic figure capture for ggplot2
@@ -48,41 +48,36 @@ scatter <- ggplot(mtcars, aes(x=wt, y=mpg, color=cyl, size=cyl)) +
       geom_point() +
       theme(legend.position="none") + ggtitle("Correlations")
 
-base::plot(scatter)
+plot(scatter)
 ```
+
+## ComplexHeatmap and patchwork
 
 ```{r complex_heatmap}
 library(ComplexHeatmap)
-library(gofigR)
 library(patchwork)
 library(ggplotify)
-library(RColorBrewer)
-
-devtools::load_all()
-
-enable(TRUE, debug=TRUE, verbose=TRUE)
-
-#gofigR::gf_print(Heatmap(matrix(rnorm(100), nrow=10, ncol=10)))
 
 hm1 <- Heatmap(matrix(rnorm(100), nrow=10, ncol=10))
 hm2 <- Heatmap(matrix(rnorm(40), nrow=4, ncol=10))
 
-p <- to_ggplot(hm1)
 publish(hm1, "test figure")
-publish(scatter, "gg scatter")
+publish(hm2)
 
-publish_base({
-  data <- as.matrix(mtcars)
-
-  coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
-  heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
-}, "Heatmap (base graphics)", show=FALSE)
-
-publish((to_ggplot(hm1) + as.ggplot(base2grob(function() {
+publish((as.ggplot(hm1) + as.ggplot(base2grob(function() {
    data <- as.matrix(mtcars)
 
   coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
   heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
 }))) / as.ggplot(hm2), "Patchwork example" )
 ```
+
+## Lattice graphics
+
+```{r lattice}
+library(lattice) 
+x <- 1:10 
+y <- 1:10 
+z <- rnorm(100) 
+publish(cloud(z ~ x*y, main = "3D Lattice Graph"), "3D lattice example")
 ```

@@ -27,29 +27,26 @@ Attaching package: ‘gofigR’
 
 > gfconfig()
 -------------------------------------------------------------------
+
 Welcome to GoFigr! This wizard will help you get up and running.
+
 -------------------------------------------------------------------
 
-Username: demo
-Password: *******************
+
+Username: publicdemo
 Testing connection...
+
   => Success
+
 API key (leave blank to generate a new one): 
-Key name (e.g. Alyssa's laptop): work laptop
+Key name (e.g. Alyssa's laptop): my API key
 Fetching workspaces...
 
+1. Scratchpad - e5249bed-40f0-4336-9bd3-fef30d3ed10d
 
-| Number|Name              |Description                  |API.ID                               |
-|------:|:-----------------|:----------------------------|:------------------------------------|
-|      1|Primary Workspace |demouser's primary workspace |98f328fc-f984-482c-b7f6-8ed272527a42 |
-|      2|Rocketship Bio    |Let's do some science        |bff6c952-fb2c-4333-80e5-5dc7291d47cc |
-|      3|Plotly demos      |N/A                          |1424ea0f-7d42-4ef5-9ba8-41aa9c5b1a94 |
-
-Please select a default workspace (1-3): 1
+Please select a default workspace (1-1): 1
 
 Configuration saved to /Users/maciej/.gofigr. Happy analysis!
-
-> 
 ```
 
 ## Usage
@@ -67,33 +64,49 @@ gofigR::enable(auto_publish=TRUE)
 
 ## Automatic output capture
 
-If `auto_publish` is on, GoFigr will intercept all calls to `plot` and `print` and publish the results if they are from a compatible library (at the moment, only `ggplot`).
+If `auto_publish` is on, GoFigr will intercept all calls to `plot` and `print` and publish the results if they are from a compatible library. At the moment, we support any graphics format also supported by `ggplotify`:
+
+-   ggplot2
+
+-   ComplexHeatmap
+
+-   cowplot
+
+-   patchwork
+
+-   lattice
 
 ## Manual capture
 
-To capture output from base R plotting, including when the plot is built iteratively across multiple expressions, wrap your code in `gofigR::capture`:
+To capture output manually, simply call `publish`:
 
-```         
-gofigR::capture({
-  plot(pressure, main="Pressure vs temperature")
-  text(50, 50, "My pretty figure")
-}, data=pressure, name="Pressure plot")
+``` R
+hm1 <- Heatmap(matrix(rnorm(100), nrow=10, ncol=10))
+
+publish(hm1, "Heatmaps are cool!")  # second argument is the figure name
 ```
 
-This is handy when you build a plot iteratively. For example, you may call `plot(...)` first, followed by a call to `text()` to add annotations, or `legend()` to place the legend.
+## Capturing base graphics
+
+To capture output from base R plotting, call `publish_base`:
+
+```         
+gofigR::publish_base({
+  base::plot(pressure, main="Pressure vs temperature")
+  text(200, 50, "Note the non-linear relationship")
+}, data=pressure, figure_name="Pressure vs temperature")
+
+gofigR::publish_base({
+  # The mtcars dataset:
+  data <- as.matrix(mtcars)
+
+  coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
+  heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
+}, data=mtcars, figure_name="Cars")
+```
 
 Note the optional `data` argument following the expression. It specifies the data which you want to associate with the figure -- it will show up under "files" (as `.RDS`) once published.
 
-## Adding support for other plotting libraries
-
-If you have a plotting function which you use often and which you would like to auto-publish, you can use `intercept`:
-
-```         
-barplot <- gofigR::intercept(graphics::barplot)
-```
-
-Subsequent calls to `barplot` will then automatically publish to GoFigr.
-
 ## Interactive use
 
-gofigR works best with `knitr`, but interactive sessions within RStudio are also supported.
+We support `knitr` as well as interactive sessions in `RStudio`.
