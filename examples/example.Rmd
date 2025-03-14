@@ -2,11 +2,7 @@
 title: "Getting started with GoFigr for R"
 author: "Maciej Pacula"
 date: "`r Sys.Date()`"
-output:
-  html_document:
-    df_print: paged
-editor_options: 
-  chunk_output_type: console
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -16,7 +12,7 @@ library(cowplot)
 
 
 knitr::opts_chunk$set(echo = TRUE)
-gofigR::enable(TRUE)
+gofigR::enable(TRUE, debug=TRUE, verbose=TRUE)
 ```
 
 
@@ -31,10 +27,10 @@ environment details, and figure data.
 ```{r manual_capture, fig.width=5, fig.height=5}
 library(RColorBrewer)
 
-gofigR::capture({
-  plot(pressure, main="Pressure vs temperature")
+gofigR::publish_base({
+  base::plot(pressure, main="Pressure vs temperature")
   text(200, 50, "Note the non-linear relationship")
-}, data=pressure, name="Pressure vs temperature")
+}, data=pressure, figure_name="Pressure vs temperature")
 
 gofigR::capture({
   # The mtcars dataset:
@@ -42,15 +38,51 @@ gofigR::capture({
 
   coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
   heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
-}, data=mtcars)
+}, data=mtcars, name="Cars")
 ```
 
 ## Automatic figure capture for ggplot2
 
-```{r correlations}
-p <- ggplot(mtcars, aes(x=wt, y=mpg, color=cyl, size=cyl)) +
+```{r correlations, fig.width=7, fig.height=7}
+scatter <- ggplot(mtcars, aes(x=wt, y=mpg, color=cyl, size=cyl)) +
       geom_point() +
       theme(legend.position="none") + ggtitle("Correlations")
 
-print(p)
+base::plot(scatter)
+```
+
+```{r complex_heatmap}
+library(ComplexHeatmap)
+library(gofigR)
+library(patchwork)
+library(ggplotify)
+library(RColorBrewer)
+
+devtools::load_all()
+
+enable(TRUE, debug=TRUE, verbose=TRUE)
+
+#gofigR::gf_print(Heatmap(matrix(rnorm(100), nrow=10, ncol=10)))
+
+hm1 <- Heatmap(matrix(rnorm(100), nrow=10, ncol=10))
+hm2 <- Heatmap(matrix(rnorm(40), nrow=4, ncol=10))
+
+p <- to_ggplot(hm1)
+publish(hm1, "test figure")
+publish(scatter, "gg scatter")
+
+publish_base({
+  data <- as.matrix(mtcars)
+
+  coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
+  heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
+}, "Heatmap (base graphics)", show=FALSE)
+
+publish((to_ggplot(hm1) + as.ggplot(base2grob(function() {
+   data <- as.matrix(mtcars)
+
+  coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
+  heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
+}))) / as.ggplot(hm2), "Patchwork example" )
+```
 ```
