@@ -144,18 +144,15 @@ print_revision <- function(rev, ...) {
 #' @examples
 #' gf_plot <- intercept(base::plot)
 intercept <- function(plot_func) {
-  # Make sure we don't capture anything internally called by plot_func
-  plot_func <- suppress(plot_func)
-
   function(...) {
-    debug_message(paste0("Intercept called with ", lapply(class, list(...)),
+    debug_message(paste0("Intercept called with ", paste0(lapply(list(...), class), collapse=", "),
                          ". Intercept: ", is_intercept_on()))
 
     if(!is_intercept_on()) {
       debug_message("Not publishing because intercept is off")
       return(plot_func(...))
     } else if(!check_configured()) {
-      debug_message("Not publishing because intercept not configured")
+      debug_message("Not publishing because not configured")
       return(plot_func(...))
     }
 
