@@ -162,7 +162,7 @@ intercept <- function(plot_func) {
       # Check if the first argument is a plot we support. If not, defer to base_func
       if(!is_supported(plot_obj)) {
         debug_message(paste0("Ignoring figure because figure object ",
-                             class(plot_obj),
+                             paste0(class(plot_obj), collapse=", "),
                              " is not supported"))
 
         return(plot_func(...))
@@ -352,6 +352,10 @@ publish <- function(plot_obj,
   }
 
   plot_obj <- to_ggplot(plot_obj)
+  if(is.null(plot_obj)) {
+    warning(paste0("Provided object cannot be converted to ggplot: ", plot_obj))
+    return(invisible(NULL))
+  }
 
   context <- get_execution_context()
   figure_name <- first_valid(figure_name, get_title(plot_obj))

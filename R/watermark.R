@@ -131,19 +131,17 @@ watermark_generator <- function(show_qr=TRUE,
 #'
 #' @param qr pre-generated QR code, as an image
 #' @param plot_obj plot object
-#' @param plot_func plotting function
 #'
 #' @return ggplot object with the watermark applied
 #' @export
-ggwatermark <- function(qr, plot_obj, plot_func) {
+ggwatermark <- function(qr, plot_obj) {
   p <- cowplot::ggdraw()
 
   if(is_ggplot(plot_obj)) {
     p <- p + cowplot::draw_plot(plot_obj,
                                 height=0.8, x=0.0, y=0.2)
   } else {
-    p <- p + cowplot::draw_plot(plot_func,
-                                height=0.8, x=0.0, y=0.2)
+    warning("Provided object is not a ggplot. Output will be empty.")
   }
 
   p <- p + cowplot::draw_image(qr,
