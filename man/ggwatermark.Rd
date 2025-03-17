@@ -4,14 +4,12 @@
 \alias{ggwatermark}
 \title{Applies a watermark to a plot object/function.}
 \usage{
-ggwatermark(qr, plot_obj, plot_func)
+ggwatermark(qr, plot_obj)
 }
 \arguments{
 \item{qr}{pre-generated QR code, as an image}
 
 \item{plot_obj}{plot object}
-
-\item{plot_func}{plotting function}
 }
 \value{
 ggplot object with the watermark applied
