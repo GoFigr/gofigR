@@ -6,7 +6,7 @@ runtime_options <- structure(local({
 
 #' Checks whether GoFigr intercept is on
 #'
-#' @returns
+#' @returns TRUE if intercept is on, FALSE otherwise
 #' @export
 is_intercept_on <- function() {
   return(runtime_options$intercept_enabled)
@@ -43,9 +43,10 @@ suppress <- function(func) {
 
 #' Checks whether GoFigr has been correctly configured.
 #'
-#' @param response
+#' @param response function to use to show the warning message if not
+#'   configured. Default: warning.
 #'
-#' @returns
+#' @returns TRUE if configured, FALSE otherwise
 #' @export
 check_configured <- function(response=warning) {
   if(is.null(get_options())) {

@@ -7,7 +7,11 @@
 check_configured(response = warning)
 }
 \arguments{
-\item{response}{}
+\item{response}{function to use to show the warning message if not
+configured. Default: warning.}
+}
+\value{
+TRUE if configured, FALSE otherwise
 }
 \description{
 Checks whether GoFigr has been correctly configured.

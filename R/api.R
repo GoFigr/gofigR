@@ -3,8 +3,9 @@ API_VERSION = "v1.2"
 
 APP_URL = "https://app.gofigr.io"
 
-#' Default path for the config file
+#' Default path to the config file
 #'
+#' @return file path
 #' @export
 CONFIG_PATH = file.path(path.expand('~'), ".gofigr")
 

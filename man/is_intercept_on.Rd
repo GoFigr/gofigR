@@ -6,6 +6,9 @@
 \usage{
 is_intercept_on()
 }
+\value{
+TRUE if intercept is on, FALSE otherwise
+}
 \description{
 Checks whether GoFigr intercept is on
 }
