@@ -305,6 +305,26 @@ display <- function(rev, plot_obj) {
   }
 }
 
+#' Tries to convert expression to a grob, returning it unchanged if it fails.
+#'
+#' @param expr expression/object to convert
+#'
+#' @returns grob if successful, expr if not
+#' @export
+try_base2grob <- function(expr) {
+  as_gg <- NULL
+
+  tryCatch({
+    as_gg <- ggplotify::as.ggplot(ggplotify::base2grob(function() {
+      expr
+    }))
+  }, error=function(err) {
+    as_gg <<- expr
+  })
+
+  return(as_gg)
+}
+
 #' Captures output from grid graphics (ggplot2, lattice, ComplexHeatmap, etc.)
 #' and publishes it to GoFigr.
 #'
@@ -315,8 +335,8 @@ display <- function(rev, plot_obj) {
 #' @export
 publish_base <- function(expr, ...) {
   asgg <- ggplotify::as.ggplot(ggplotify::base2grob(function() {
-    expr
-  }))
+      expr
+    }))
 
   publish(asgg, ...)
 }
@@ -346,6 +366,8 @@ publish <- function(plot_obj,
                     metadata=NULL,
                     show=TRUE) {
 
+  plot_obj <- try_base2grob(plot_obj)
+
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
     warning("GoFigr hasn't been configured. Did you call gofigR::enable()?")
@@ -363,7 +385,10 @@ publish <- function(plot_obj,
   input_path <- first_valid(input_path, context$input_path)
   input_contents <- first_valid(input_contents, context$input_contents)
   chunk_code <- first_valid(chunk_code, context$chunk_code)
-  metadata <- first_valid(metadata, context$metadata)
+
+  if(is.null(metadata)) {
+    metadata <- context$metadata
+  }
 
   if(is.null(figure_name)) {
     figure_name <- "Anonymous Figure"

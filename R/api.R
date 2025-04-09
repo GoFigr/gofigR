@@ -9,6 +9,32 @@ APP_URL = "https://app.gofigr.io"
 #' @export
 CONFIG_PATH = file.path(path.expand('~'), ".gofigr")
 
+#' Finds the .gofigr config file in current directory or any of the
+#' parent directories. If the file cannot be found, will also check
+#' CONFIG_PATH.
+#'
+#' @param start_dir top-level directory where to start looking. getwd()
+#'  by default.
+#'
+#' @returns path to .gofigr, or NULL if not found
+#' @export
+find_config <- function(start_dir=NULL) {
+  if(is.null(start_dir)) {
+    start_dir <- getwd()
+  }
+
+  current <- file.path(start_dir, ".gofigr")
+  if(file.exists(current)) {
+    return(current)
+  } else if(dirname(start_dir) != start_dir) {
+    return(find_config(dirname(start_dir)))
+  } else if (!is.null(CONFIG_PATH) && file.exists(CONFIG_PATH)) {
+    return(CONFIG_PATH)
+  } else {
+    return(NULL)
+  }
+}
+
 #' Reads the GoFigr configuration, prioritizing environment variables over the
 #' config file:
 #'
@@ -18,12 +44,16 @@ CONFIG_PATH = file.path(path.expand('~'), ".gofigr")
 #' * GF_WORKSPACE or config["workspace"]
 #' * GF_URL or config["url"]
 #'
-#' @param path path to the config file, default ~/.gofigr
+#' @param path path to the config file, default find_config()
 #'
 #' @return parsed configuration or empty list if not available
 #' @export
-read_config <- function(path=CONFIG_PATH) {
-  if(!file.exists(path)) {
+read_config <- function(path=NULL) {
+  if(is.null(path)) {
+    path <- find_config()
+  }
+
+  if(is.null(path) || !file.exists(path)) {
     return(list())
   }
 

@@ -5,10 +5,10 @@
 \title{Reads the GoFigr configuration, prioritizing environment variables over the
 config file:}
 \usage{
-read_config(path = CONFIG_PATH)
+read_config(path = NULL)
 }
 \arguments{
-\item{path}{path to the config file, default ~/.gofigr}
+\item{path}{path to the config file, default find_config()}
 }
 \value{
 parsed configuration or empty list if not available
