@@ -3,14 +3,17 @@
 \docType{data}
 \name{CONFIG_PATH}
 \alias{CONFIG_PATH}
-\title{Default path for the config file}
+\title{Default path to the config file}
 \format{
 An object of class \code{character} of length 1.
 }
 \usage{
 CONFIG_PATH
 }
+\value{
+file path
+}
 \description{
-Default path for the config file
+Default path to the config file
 }
 \keyword{datasets}

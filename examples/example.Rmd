@@ -27,12 +27,12 @@ environment details, and figure data.
 ```{r manual_capture, fig.width=8, fig.height=8}
 library(RColorBrewer)
 
-gofigR::publish_base({
+gofigR::publish({
   base::plot(pressure, main="Pressure vs temperature")
   text(200, 50, "Note the non-linear relationship")
 }, data=pressure, figure_name="Pressure vs temperature")
 
-gofigR::publish_base({
+gofigR::publish({
   # The mtcars dataset:
   data <- as.matrix(mtcars)
 
