@@ -154,7 +154,7 @@ gofigr_client <- function(username=NULL, password=NULL, api_key=NULL,
 #' @return NA
 #' @export
 print.gofigr <- function(x, ...) {
-  cat(paste0("GoFigr client at ", x$url, "\n"))
+  cat(paste0("GoFigr client at ", x$url, "\n"), ...)
 }
 
 #' Equivalent to cat but only outputs if GoFigr client is verbose.

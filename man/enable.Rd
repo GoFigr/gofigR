@@ -14,6 +14,7 @@ enable(
   watermark = QR_WATERMARK,
   verbose = FALSE,
   debug = FALSE,
+  api_key = NULL,
   show = "watermark"
 )
 }
@@ -36,6 +37,8 @@ that setting this option will re-assign plot() and print() in the global environ
 \item{verbose}{whether to show verbose output}
 
 \item{debug}{whether to show debugging information}
+
+\item{api_key}{GoFigr API key}
 
 \item{show}{which figure to display in the document: original, watermark, or hide. Note that this setting \
 only affects the display and doesn't change what gets published: e.g. even if you choose to display \

@@ -11,7 +11,8 @@ gfPlotServer(
   metadata = NULL,
   env = parent.frame(),
   figure_name = NULL,
-  quoted = FALSE
+  quoted = FALSE,
+  base_graphics = FALSE
 )
 }
 \arguments{
@@ -27,6 +28,8 @@ to capture input values.}
 \item{figure_name}{name of the figure to publish under. Inferred from figure's title if NULL.}
 
 \item{quoted}{whether the passed expression is quoted}
+
+\item{base_graphics}{whether the passed expression uses base graphics}
 }
 \value{
 moduleServer

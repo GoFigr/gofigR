@@ -320,6 +320,7 @@ try_base2grob <- function(expr) {
     }))
   }, error=function(err) {
     as_gg <<- expr
+    grDevices::dev.off()
   })
 
   return(as_gg)
@@ -365,9 +366,6 @@ publish <- function(plot_obj,
                     data=NULL,
                     metadata=NULL,
                     show=TRUE) {
-
-  plot_obj <- try_base2grob(plot_obj)
-
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
     warning("GoFigr hasn't been configured. Did you call gofigR::enable()?")
@@ -442,7 +440,31 @@ publish <- function(plot_obj,
     display(rev, plot_obj)
   }
 
-  return(invisible(rev))
+  class(rev) <- "gofigr_revision"
+
+  return(rev)
+}
+
+#' Default print method for GoFigr revisions.
+#'
+#' @param x revision
+#' @param ... passed to base::print
+#'
+#' @returns NA
+#' @export
+print.gofigr_revision <- function(x, ...) {
+  print(get_revision_url(x), ...)
+}
+
+#' Default cat method for GoFigr revisions.
+#'
+#' @param x revision
+#' @param ... passed to cat
+#'
+#' @returns NA
+#' @export
+cat.gofigr_revision <- function(x, ...) {
+  cat(paste0(get_revision_url(x), "\n"), ...)
 }
 
 to_ggplot <- function(x, warn=FALSE) {
@@ -510,6 +532,7 @@ intercept_base <- function(env=.GlobalEnv) {
 #' @param show which figure to display in the document: original, watermark, or hide. Note that this setting \
 #' only affects the display and doesn't change what gets published: e.g. even if you choose to display \
 #' the original figure, the watermarked version will still be published to GoFigr.
+#' @param api_key GoFigr API key
 #'
 #' @return named list of GoFigr options
 #' @export
@@ -522,6 +545,7 @@ enable <- function(auto_publish=FALSE,
                    watermark=QR_WATERMARK,
                    verbose=FALSE,
                    debug=FALSE,
+                   api_key=NULL,
                    show="watermark") {
   check_show_setting(show)
 
@@ -532,7 +556,9 @@ enable <- function(auto_publish=FALSE,
   }
 
   # Create the GoFigr client
-  gf <- gofigr_client(workspace=workspace, verbose=verbose)
+  gf <- gofigr_client(workspace = workspace,
+                      verbose = verbose,
+                      api_key = api_key)
 
   # Find the analysis
   if(!is.null(analysis_api_id)) {
