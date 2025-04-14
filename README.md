@@ -88,15 +88,15 @@ publish(hm1, "Heatmaps are cool!")  # second argument is the figure name
 
 ## Capturing base graphics
 
-To capture output from base R plotting, call `publish` with a plotting expression:
+To capture output from base R plotting, call `publish_base` with a plotting expression:
 
 ``` r
-gofigR::publish({
+gofigR::publish_base({
   base::plot(pressure, main="Pressure vs temperature")
   text(200, 50, "Note the non-linear relationship")
 }, data=pressure, figure_name="Pressure vs temperature")
 
-gofigR::publish({
+gofigR::publish_base({
   # The mtcars dataset:
   data <- as.matrix(mtcars)
 

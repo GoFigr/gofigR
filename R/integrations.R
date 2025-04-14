@@ -354,7 +354,6 @@ publish_base <- function(expr, ...) {
 #' @param data optional data to save with this figure. The data will be saved as RDS.
 #' @param metadata optional metadata
 #' @param show whether to display the figure after publication
-#' @param convert_base whether to convert base graphics to ggplot
 #'
 #' @returns GoFigr revision object
 #' @export
@@ -366,14 +365,7 @@ publish <- function(plot_obj,
                     image_formats=c("eps"),
                     data=NULL,
                     metadata=NULL,
-                    show=TRUE,
-                    convert_base=TRUE) {
-
-  if(convert_base) {
-    plot_obj <- try_base2grob(plot_obj)
-    graphics.off()
-  }
-
+                    show=TRUE) {
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
     warning("GoFigr hasn't been configured. Did you call gofigR::enable()?")
@@ -461,7 +453,7 @@ publish <- function(plot_obj,
 #' @returns NA
 #' @export
 print.gofigr_revision <- function(x, ...) {
-  print(paste0(get_revision_url(x), "\n"), ...)
+  print(get_revision_url(x), ...)
 }
 
 #' Default cat method for GoFigr revisions.

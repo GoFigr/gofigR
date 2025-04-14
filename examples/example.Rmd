@@ -24,12 +24,12 @@ This markdown illustrates GoFigr integration with Rmarkdown. Notice how every fi
 ## Manual figure capture
 
 ```{r manual_capture, fig.width=8, fig.height=8}
-publish({
+publish_base({
   base::plot(pressure, main="Pressure vs temperature")
   text(200, 50, "Note the non-linear relationship")
 }, data=pressure, figure_name="Pressure vs temperature")
 
-publish({
+publish_base({
   # The mtcars dataset:
   data <- as.matrix(mtcars)
 
@@ -54,8 +54,8 @@ scatter %>% publish("Correlations")
 hm1 <- ComplexHeatmap::Heatmap(matrix(rnorm(100), nrow=10, ncol=10))
 hm2 <- ComplexHeatmap::Heatmap(matrix(rnorm(40), nrow=4, ncol=10))
 
-publish(hm1, convert_base=FALSE)
-publish(hm2, "Complex heatmap", convert_base=FALSE)
+publish(hm1)
+publish(hm2, "Complex heatmap")
 ```
 
 ```{r}
