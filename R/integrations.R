@@ -371,6 +371,7 @@ publish <- function(plot_obj,
 
   if(convert_base) {
     plot_obj <- try_base2grob(plot_obj)
+    graphics.off()
   }
 
   gf_opts <- get_options()
@@ -447,7 +448,31 @@ publish <- function(plot_obj,
     display(rev, plot_obj)
   }
 
+  class(rev) <- "gofigr_revision"
+
   return(rev)
+}
+
+#' Default print method for GoFigr revisions.
+#'
+#' @param x revision
+#' @param ... passed to base::print
+#'
+#' @returns NA
+#' @export
+print.gofigr_revision <- function(x, ...) {
+  print(paste0(get_revision_url(x), "\n"), ...)
+}
+
+#' Default cat method for GoFigr revisions.
+#'
+#' @param x revision
+#' @param ... passed to cat
+#'
+#' @returns NA
+#' @export
+cat.gofigr_revision <- function(x, ...) {
+  cat(paste0(get_revision_url(x), "\n"), ...)
 }
 
 to_ggplot <- function(x, warn=FALSE) {

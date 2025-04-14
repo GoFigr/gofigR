@@ -54,17 +54,17 @@ scatter %>% publish("Correlations")
 hm1 <- ComplexHeatmap::Heatmap(matrix(rnorm(100), nrow=10, ncol=10))
 hm2 <- ComplexHeatmap::Heatmap(matrix(rnorm(40), nrow=4, ncol=10))
 
-publish(hm1)
-publish(hm2, "Complex heatmap")
+publish(hm1, convert_base=FALSE)
+publish(hm2, "Complex heatmap", convert_base=FALSE)
 ```
 
 ```{r}
-(as.ggplot(hm1) + as.ggplot(base2grob(function() {
+((as.ggplot(hm1) + as.ggplot(base2grob(function() {
    data <- as.matrix(mtcars)
 
   coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
   heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
-}))) / as.ggplot(hm2) %>% publish("Patchwork example")
+}))) / as.ggplot(hm2)) %>% publish("Patchwork example")
 ```
 
 
