@@ -9,30 +9,27 @@ output: html_document
 library(gofigR)
 library(ggplot2)
 library(cowplot)
-
+library(ComplexHeatmap)
+library(patchwork)
+library(ggplotify)
+library(tidyverse)
+library(RColorBrewer)
 
 knitr::opts_chunk$set(echo = TRUE)
-gofigR::enable(TRUE)
+gofigR::enable()
 ```
 
-
-
-This markdown illustrates GoFigr integration with Rmarkdown. Notice how
-every figure gets a unique QR code which links to the specific
-revision on GoFigr. You can navigate to that revision and view the source code,
-environment details, and figure data.
+This markdown illustrates GoFigr integration with Rmarkdown. Notice how every figure gets a unique QR code which links to the specific revision on GoFigr. You can navigate to that revision and view the source code, environment details, and figure data.
 
 ## Manual figure capture
 
 ```{r manual_capture, fig.width=8, fig.height=8}
-library(RColorBrewer)
-
-gofigR::publish({
+publish({
   base::plot(pressure, main="Pressure vs temperature")
   text(200, 50, "Note the non-linear relationship")
 }, data=pressure, figure_name="Pressure vs temperature")
 
-gofigR::publish({
+publish({
   # The mtcars dataset:
   data <- as.matrix(mtcars)
 
@@ -48,29 +45,26 @@ scatter <- ggplot(mtcars, aes(x=wt, y=mpg, color=cyl, size=cyl)) +
       geom_point() +
       theme(legend.position="none") + ggtitle("Correlations")
 
-plot(scatter)
+scatter %>% publish("Correlations")
 ```
 
 ## ComplexHeatmap and patchwork
 
 ```{r complex_heatmap}
-library(ComplexHeatmap)
-library(patchwork)
-library(ggplotify)
+hm1 <- ComplexHeatmap::Heatmap(matrix(rnorm(100), nrow=10, ncol=10))
+hm2 <- ComplexHeatmap::Heatmap(matrix(rnorm(40), nrow=4, ncol=10))
 
-hm1 <- Heatmap(matrix(rnorm(100), nrow=10, ncol=10))
-hm2 <- Heatmap(matrix(rnorm(40), nrow=4, ncol=10))
-
-publish(hm1, "test figure")
-publish(hm2)
+publish(hm1)
+publish(hm2, "Complex heatmap")
 
 publish((as.ggplot(hm1) + as.ggplot(base2grob(function() {
    data <- as.matrix(mtcars)
 
   coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
   heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
-}))) / as.ggplot(hm2), "Patchwork example" )
+}))) / as.ggplot(hm2), "Patchwork example")
 ```
+
 
 ## Lattice graphics
 

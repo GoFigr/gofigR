@@ -441,8 +441,6 @@ publish <- function(plot_obj,
   if(show) {
     display(rev, plot_obj)
   }
-
-  return(invisible(rev))
 }
 
 to_ggplot <- function(x, warn=FALSE) {
@@ -481,14 +479,14 @@ make_invisible <- function(func) {
 #' @returns result of the call to plot(...)
 #'
 #' @export
-gf_plot <- make_invisible(intercept(base::plot))
+gf_plot <- intercept(base::plot)
 
 #' Prints and publishes an object (if supported)
 #' @param ... passed directly to print
 #' @returns result of the call to print(...)
 #'
 #' @export
-gf_print <- make_invisible(intercept(base::print))
+gf_print <- intercept(base::print)
 
 intercept_base <- function(env=.GlobalEnv) {
   assign("plot", gf_plot, env)
@@ -510,6 +508,7 @@ intercept_base <- function(env=.GlobalEnv) {
 #' @param show which figure to display in the document: original, watermark, or hide. Note that this setting \
 #' only affects the display and doesn't change what gets published: e.g. even if you choose to display \
 #' the original figure, the watermarked version will still be published to GoFigr.
+#' @param api_key GoFigr API key
 #'
 #' @return named list of GoFigr options
 #' @export
@@ -522,6 +521,7 @@ enable <- function(auto_publish=FALSE,
                    watermark=QR_WATERMARK,
                    verbose=FALSE,
                    debug=FALSE,
+                   api_key=NULL,
                    show="watermark") {
   check_show_setting(show)
 
@@ -532,7 +532,9 @@ enable <- function(auto_publish=FALSE,
   }
 
   # Create the GoFigr client
-  gf <- gofigr_client(workspace=workspace, verbose=verbose)
+  gf <- gofigr_client(workspace = workspace,
+                      verbose = verbose,
+                      api_key = api_key)
 
   # Find the analysis
   if(!is.null(analysis_api_id)) {

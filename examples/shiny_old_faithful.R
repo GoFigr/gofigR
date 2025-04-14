@@ -10,7 +10,6 @@
 
 library(shiny)
 library(gofigR)
-library(ggplot2)
 
 gofigR::enable()
 
