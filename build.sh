@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-set -e
 rm -f gofigR*tar.gz
 git rm -f man/*Rd
 rm -f man/*Rd
+
+set -e
 R -e "roxygen2::roxygenize(clean=TRUE)"
 git add man/*Rd
 R CMD build .

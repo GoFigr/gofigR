@@ -320,6 +320,7 @@ try_base2grob <- function(expr) {
     }))
   }, error=function(err) {
     as_gg <<- expr
+    grDevices::dev.off()
   })
 
   return(as_gg)
@@ -353,6 +354,7 @@ publish_base <- function(expr, ...) {
 #' @param data optional data to save with this figure. The data will be saved as RDS.
 #' @param metadata optional metadata
 #' @param show whether to display the figure after publication
+#' @param convert_base whether to convert base graphics to ggplot
 #'
 #' @returns GoFigr revision object
 #' @export
@@ -364,9 +366,12 @@ publish <- function(plot_obj,
                     image_formats=c("eps"),
                     data=NULL,
                     metadata=NULL,
-                    show=TRUE) {
+                    show=TRUE,
+                    convert_base=TRUE) {
 
-  plot_obj <- try_base2grob(plot_obj)
+  if(convert_base) {
+    plot_obj <- try_base2grob(plot_obj)
+  }
 
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
@@ -441,6 +446,8 @@ publish <- function(plot_obj,
   if(show) {
     display(rev, plot_obj)
   }
+
+  return(rev)
 }
 
 to_ggplot <- function(x, warn=FALSE) {
@@ -479,14 +486,14 @@ make_invisible <- function(func) {
 #' @returns result of the call to plot(...)
 #'
 #' @export
-gf_plot <- intercept(base::plot)
+gf_plot <- make_invisible(intercept(base::plot))
 
 #' Prints and publishes an object (if supported)
 #' @param ... passed directly to print
 #' @returns result of the call to print(...)
 #'
 #' @export
-gf_print <- intercept(base::print)
+gf_print <- make_invisible(intercept(base::print))
 
 intercept_base <- function(env=.GlobalEnv) {
   assign("plot", gf_plot, env)

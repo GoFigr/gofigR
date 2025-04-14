@@ -56,13 +56,15 @@ hm2 <- ComplexHeatmap::Heatmap(matrix(rnorm(40), nrow=4, ncol=10))
 
 publish(hm1)
 publish(hm2, "Complex heatmap")
+```
 
-publish((as.ggplot(hm1) + as.ggplot(base2grob(function() {
+```{r}
+(as.ggplot(hm1) + as.ggplot(base2grob(function() {
    data <- as.matrix(mtcars)
 
   coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
   heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
-}))) / as.ggplot(hm2), "Patchwork example")
+}))) / as.ggplot(hm2) %>% publish("Patchwork example")
 ```
 
 
