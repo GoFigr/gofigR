@@ -47,7 +47,7 @@ server <- function(input, output) {
     hist(x, breaks = bins, col = 'darkgray', border = 'white',
          xlab = 'Waiting time to next eruption (in mins)',
          main = 'Histogram of waiting times')
-  }, input, figure_name="Old faithful waiting times")
+  }, input, figure_name="Old faithful waiting times", base_graphics = TRUE)
 }
 
 # Run the application

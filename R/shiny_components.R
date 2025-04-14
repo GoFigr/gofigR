@@ -66,13 +66,15 @@ gfPlot <- function(id, ...) {
 #' @param env environment in which to evaluate the expression
 #' @param figure_name name of the figure to publish under. Inferred from figure's title if NULL.
 #' @param quoted whether the passed expression is quoted
+#' @param base_graphics whether the passed expression uses base graphics
 #'
 #' @returns moduleServer
 #' @export
 gfPlotServer <- function(id, expr, metadata=NULL,
                          env=parent.frame(),
                          figure_name = NULL,
-                         quoted = FALSE) {
+                         quoted = FALSE,
+                         base_graphics = FALSE) {
   plot_func <- shiny::installExprFunction(expr,
                                           "func", env,
                                           quoted,
@@ -131,9 +133,15 @@ gfPlotServer <- function(id, expr, metadata=NULL,
         metadata <- shiny::reactiveValuesToList(metadata)
       }
 
-      values$revision = gofigR::publish(plot_func(),
-                                        metadata=list(`Shiny inputs`=metadata),
-                                        figure_name=figure_name)
+      if(base_graphics) {
+        pub <- gofigR::publish_base
+      } else {
+        pub <- gofigR::publish
+      }
+
+      values$revision = pub(plot_func(),
+                            metadata=list(`Shiny inputs`=metadata),
+                            figure_name=figure_name)
       shinyjs::hide(id="loader")
       shinyjs::show(id="watermark-container")
     })

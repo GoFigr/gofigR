@@ -13,8 +13,7 @@ publish(
   image_formats = c("eps"),
   data = NULL,
   metadata = NULL,
-  show = TRUE,
-  convert_base = TRUE
+  show = TRUE
 )
 }
 \arguments{
@@ -35,8 +34,6 @@ publish(
 \item{metadata}{optional metadata}
 
 \item{show}{whether to display the figure after publication}
-
-\item{convert_base}{whether to convert base graphics to ggplot}
 }
 \value{
 GoFigr revision object
