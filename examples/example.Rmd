@@ -16,7 +16,7 @@ library(tidyverse)
 library(RColorBrewer)
 
 knitr::opts_chunk$set(echo = TRUE)
-gofigR::enable()
+gofigR::enable(TRUE)
 ```
 
 This markdown illustrates GoFigr integration with Rmarkdown. Notice how every figure gets a unique QR code which links to the specific revision on GoFigr. You can navigate to that revision and view the source code, environment details, and figure data.
@@ -45,7 +45,7 @@ scatter <- ggplot(mtcars, aes(x=wt, y=mpg, color=cyl, size=cyl)) +
       geom_point() +
       theme(legend.position="none") + ggtitle("Correlations")
 
-scatter %>% publish("Correlations")
+plot(scatter)
 ```
 
 ## ComplexHeatmap and patchwork

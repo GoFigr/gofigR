@@ -98,6 +98,15 @@ get_options <- function() {
   }
 }
 
+#' Gets the currently configured GoFigr client
+#'
+#' @returns GoFigr client
+#' @export
+get_client <- function() {
+  opts <- get_options()
+  return(opts$client)
+}
+
 is_debug_on <- function() {
   opts <- get_options()
   if(is.null(opts)) {

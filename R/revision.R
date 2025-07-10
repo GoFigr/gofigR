@@ -39,7 +39,7 @@ get_revision_url <- function(rev) {
 #'
 #' @param gf GoFigr client
 #' @param figure figure under which to create the revision
-#' @param metadata metadata for the revision, as named list
+#' @param metadata metadata for the revision, as a named list
 #' @param data list of Data objects
 #'
 #' @return created revision object
