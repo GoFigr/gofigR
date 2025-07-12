@@ -436,7 +436,9 @@ publish <- function(plot_obj,
 
   other_data <- annotate(rev_bare, plot_obj, fig$name, input_path, input_contents, chunk_code, data)
 
-  rev <- gofigR::update_revision_data(client, rev_bare, silent=TRUE, new_data=append(image_data, other_data))
+  rev <- gofigR::update_revision_data(client, rev_bare, silent=TRUE,
+                                      new_data=append(image_data, other_data),
+                                      assets=unname(gf_opts$assets))
   file.remove(png_path)
 
   if(gf_opts$verbose) {
@@ -526,6 +528,21 @@ intercept_base <- function(env=.GlobalEnv) {
   assign("print", gf_print, env)
 }
 
+
+#' Syncs a file with the GoFigr service and stores a reference. The file
+#' will be associated with all figures published after this call.
+#'
+#' @param path path to the file
+#'
+#' @returns null
+#' @export
+sync_file <- function(path) {
+  opts <- get_options()
+  asset_rev <- sync_workspace_asset(opts$client, opts$workspace, path)
+  opts$assets[[get_api_id(asset_rev)]] <- asset_rev
+}
+
+
 #' Enables GoFigr support.
 #'
 #' @param auto_publish will publish all plots automatically if TRUE. Note
@@ -589,6 +606,7 @@ enable <- function(auto_publish=FALSE,
     verbose <- verbose
     debug <- debug
     show <- show
+    assets <- list()
 
     return(environment())
   })))

@@ -64,10 +64,12 @@ create_revision <- function(gf, figure, metadata=list(), data=NULL) {
 #' @param revision revision or its API ID for which to update the data
 #' @param new_data new data, as a list of GoFigrData objects (e.g. make_image_data or make_text_data)
 #' @param silent whether to generate an activity. Internal use only.
+#' @param assets list of asset revision IDs to be assocaited with this revision
 #'
 #' @return updated revision
 #' @export
-update_revision_data <- function(gf, revision, new_data, silent=FALSE) {
+update_revision_data <- function(gf, revision, new_data, silent=FALSE,
+                                 assets=list()) {
   if(is.character(revision)) {
     revision <- get_revision(gf, revision)
   }
@@ -78,8 +80,11 @@ update_revision_data <- function(gf, revision, new_data, silent=FALSE) {
     params <- ""
   }
 
+  asset_data <- lapply(assets, function(ar) {asset_linked_to_figure(revision, ar)})
+
   response_to_JSON(gofigr_PATCH(gf, paste0("revision/", get_api_id(revision), "/", params),
-                               body=obj_to_JSON(list(data=lapply(new_data, encode_raw_data))),
+                               body=obj_to_JSON(list(data=lapply(new_data, encode_raw_data),
+                                                     assets=asset_data)),
                                httr::content_type_json(),
                                expected_status_code = 200))
 }

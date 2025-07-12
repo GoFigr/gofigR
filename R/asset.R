@@ -104,11 +104,23 @@ find_asset_revision_by_hash <- function(gf, digest, hash_type="blake3") {
 }
 
 
+#' Calculates a checksum for a file
+#'
+#' @param path path to the file
+#'
+#' @returns checksum, as a hex digest
 calc_checksum <- function(path) {
   digest::digest(path, algo="blake3", file=TRUE)
 }
 
 
+#' Creates a new asset revision from file.
+#'
+#' @param gf GoFigr client
+#' @param workspace_id parent workspace in case we have to create a brand new asset
+#' @param path path to file
+#'
+#' @returns asset revision object
 new_asset_revision_from_file <- function(gf, workspace_id, path) {
   # Find existing assets to create this revision under
   name <- basename(path)
@@ -130,6 +142,20 @@ new_asset_revision_from_file <- function(gf, workspace_id, path) {
 }
 
 
+#' Syncs a file with the GoFigr service
+#'
+#' \enumerate{
+#'   \item If we haven't seen this file before, creates a new asset and a new revision
+#'   \item If we have seen the file but haven't seen this revision, creates a new revision
+#'   \item If we have seen this revision, returns the existing revision
+#'   }
+#'
+#' @param gf GoFigr client
+#' @param workspace_id parent workspace in case we have to create a brand new asset
+#' @param path path to file
+#'
+#' @returns asset revision object
+#' @export
 sync_workspace_asset <- function(gf, workspace_id, path) {
   checksum <- calc_checksum(path)
 
@@ -143,7 +169,24 @@ sync_workspace_asset <- function(gf, workspace_id, path) {
   } else {
     warning("Multiple revisions with the same checksum found. Default to first: ",
             paste0(sapply(revisions, function(x) {x$api_id}), collapse=", "))
-    return(assets[[1]])
+    return(revisions[[1]])
   }
+}
+
+
+#' Creates an object representing a relationship between a figure and
+#' an asset.
+#'
+#' @param figure_revision figure revision ID or object
+#' @param asset_revision asset revision ID or object
+#' @param use_type direct or indirect
+#'
+#' @returns relationship object
+#' @export
+asset_linked_to_figure <- function(figure_revision, asset_revision,
+                                   use_type="indirect") {
+  return(list(figure_revision=get_api_id(figure_revision),
+              asset_revision=get_api_id(asset_revision),
+              use_type=use_type))
 }
 

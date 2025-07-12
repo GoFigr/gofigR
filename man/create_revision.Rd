@@ -11,7 +11,7 @@ create_revision(gf, figure, metadata = list(), data = NULL)
 
 \item{figure}{figure under which to create the revision}
 
-\item{metadata}{metadata for the revision, as named list}
+\item{metadata}{metadata for the revision, as a named list}
 
 \item{data}{list of Data objects}
 }
