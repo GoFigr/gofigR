@@ -314,6 +314,41 @@ display <- function(rev, plot_obj) {
   }
 }
 
+
+#' Executes an expression while isolating any new graphics devices it creates.
+#'
+#' @param expr The R expression to evaluate.
+#' @return result of evaluating expr
+#' @exportp
+with_isolated_devices <- function(expr) {
+  # 1. Backup the original device state
+  original_devices <- grDevices::dev.list()
+  original_active_device <- tryCatch(grDevices::dev.cur(), error = function(e) NULL)
+
+  # 2. Schedule the cleanup to run when the function exits (even on error)
+  on.exit({
+    # Get the list of devices after the expression has run
+    new_devices <- grDevices::dev.list()
+
+    # Identify any devices that were opened by the expression
+    devices_to_close <- setdiff(new_devices, original_devices)
+
+    # Close them
+    for (dev in devices_to_close) {
+      grDevices::dev.off(dev)
+    }
+
+    # Restore the originally active device, if it still exists
+    if (!is.null(original_active_device) && original_active_device %in% grDevices::dev.list()) {
+      grDevices::dev.set(original_active_device)
+    }
+  })
+
+  # 3. Evaluate the user's expression
+  force(expr)
+}
+
+
 #' Tries to convert expression to a grob, returning it unchanged if it fails.
 #'
 #' @param expr expression/object to convert
@@ -324,12 +359,12 @@ try_base2grob <- function(expr) {
   as_gg <- NULL
 
   tryCatch({
-    as_gg <- ggplotify::as.ggplot(ggplotify::base2grob(function() {
-      expr
-    }))
+    with_isolated_devices({
+      as_gg <- ggplotify::as.ggplot(ggplotify::base2grob(function() {
+        expr
+    }))})
   }, error=function(err) {
     as_gg <<- expr
-    grDevices::dev.off()
   })
 
   return(as_gg)
@@ -344,11 +379,15 @@ try_base2grob <- function(expr) {
 #' @return GoFigr Revision object
 #' @export
 publish_base <- function(expr, ...) {
-  asgg <- ggplotify::as.ggplot(ggplotify::base2grob(function() {
-      expr
-    }))
+  .Deprecated("publish")
 
-  publish(asgg, ...)
+  with_isolated_devices({
+    asgg <- ggplotify::as.ggplot(ggplotify::base2grob(function() {
+        expr
+      }))
+
+    publish(asgg, ..., base_convert=FALSE)
+  })
 }
 
 
@@ -363,6 +402,7 @@ publish_base <- function(expr, ...) {
 #' @param data optional data to save with this figure. The data will be saved as RDS.
 #' @param metadata optional metadata
 #' @param show whether to display the figure after publication
+#' @param base_convert whether to try converting base graphics to grid graphics
 #'
 #' @returns GoFigr revision object
 #' @export
@@ -374,11 +414,19 @@ publish <- function(plot_obj,
                     image_formats=c("eps"),
                     data=NULL,
                     metadata=NULL,
-                    show=TRUE) {
+                    show=TRUE,
+                    base_convert=TRUE) {
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
     warning("GoFigr hasn't been configured. Did you call gofigR::enable()?")
     return(invisible(NULL))
+  }
+
+  if(base_convert) {
+    res <- try_base2grob(plot_obj)
+    if(is_supported(res)) {
+      plot_obj <- res
+    }
   }
 
   plot_obj <- to_ggplot(plot_obj)
@@ -478,16 +526,16 @@ cat.gofigr_revision <- function(x, ...) {
   cat(paste0(get_revision_url(x), "\n"), ...)
 }
 
-to_ggplot <- function(x, warn=FALSE) {
-  if(is_ggplot(x)) {
+to_ggplot <- function(x, warn = FALSE) {
+  if (is_ggplot(x)) {
     return(x)
   }
 
   converted <- NULL
   tryCatch({
     converted <- ggplotify::as.ggplot(x)
-  }, error=function(err) {
-    if(warn) {
+  }, error = function(err) {
+    if (warn) {
       warning(err)
     }
     converted <- NULL
@@ -524,7 +572,6 @@ gf_plot <- make_invisible(intercept(base::plot))
 gf_print <- make_invisible(intercept(base::print))
 
 intercept_base <- function(env=.GlobalEnv) {
-  assign("plot", gf_plot, env)
   assign("print", gf_print, env)
 }
 

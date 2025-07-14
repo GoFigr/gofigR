@@ -13,7 +13,8 @@ publish(
   image_formats = c("eps"),
   data = NULL,
   metadata = NULL,
-  show = TRUE
+  show = TRUE,
+  base_convert = TRUE
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ publish(
 \item{metadata}{optional metadata}
 
 \item{show}{whether to display the figure after publication}
+
+\item{base_convert}{whether to try converting base graphics to grid graphics}
 }
 \value{
 GoFigr revision object
