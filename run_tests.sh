@@ -1,2 +1,3 @@
 #!/bin/env bash
-Rscript -e "devtools::test()"
+set -e
+Rscript -e "devtools::test(stop_on_failure=TRUE)"
