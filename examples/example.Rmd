@@ -16,7 +16,7 @@ library(tidyverse)
 library(RColorBrewer)
 
 knitr::opts_chunk$set(echo = TRUE)
-gofigR::enable(TRUE)
+gofigR::enable(TRUE, analysis_name="R automated test")
 ```
 
 This markdown illustrates GoFigr integration with Rmarkdown. Notice how every figure gets a unique QR code which links to the specific revision on GoFigr. You can navigate to that revision and view the source code, environment details, and figure data.

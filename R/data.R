@@ -180,6 +180,18 @@ encode_raw_data <- function(data) {
   ))
 }
 
+#' Retrieves a data object. Use in conjunction with get_revision or get_asset_revision,
+#' to retrieve the full data for a data object.
+#'
+#' @param gf GoFigr client
+#' @param api_id API ID of the data object
+#'
+#' @returns full data object
+#' @export
+get_data <- function(gf, api_id) {
+  response_to_JSON(gofigr_GET(gf, paste0("data/", api_id)))
+}
+
 #' Default print representation of GoFigr data objects.
 #'
 #' @param x object to print

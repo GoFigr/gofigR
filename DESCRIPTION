@@ -17,4 +17,12 @@ RoxygenNote: 7.3.2
 Imports: httr, jsonlite, knitr, base64enc, readr, magick, qrcode, digest,
   getPass, scriptName, rstudioapi, rsvg, cowplot, ggplotify, shiny, shinyjs
 Suggests:
-  ggplot2, gplots
+    ggplot2,
+    gplots,
+    rmarkdown,
+    withr,
+    purrr,
+    magick,
+    dtt,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

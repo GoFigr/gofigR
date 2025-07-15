@@ -590,7 +590,7 @@ sync_file <- function(path) {
 }
 
 
-#' Enables GoFigr support.
+#' Enables GoFigr in the current R/Rmd file.
 #'
 #' @param auto_publish will publish all plots automatically if TRUE. Note
 #'  that setting this option will re-assign plot() and print() in the global environment.

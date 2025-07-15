@@ -1,0 +1,40 @@
+---
+title: "Automated knitr test"
+author: "Maciej Pacula"
+date: "`r Sys.Date()`"
+output: html_document
+params:
+  analysis_name: "Automated markdown test"
+---
+
+```{r setup, include=FALSE}
+library(gofigR)
+library(ggplot2)
+library(cowplot)
+library(ComplexHeatmap)
+library(patchwork)
+library(ggplotify)
+library(tidyverse)
+library(RColorBrewer)
+
+knitr::opts_chunk$set(echo = TRUE)
+gofigR::enable(auto_publish=TRUE, analysis_name=params$analysis_name)
+```
+
+This markdown illustrates GoFigr integration with Rmarkdown. Notice how every figure gets a unique QR code which links to the specific revision on GoFigr. You can navigate to that revision and view the source code, environment details, and figure data.
+
+## Manual figure capture
+
+```{r manual_capture, fig.width=8, fig.height=8}
+publish({
+  base::plot(pressure, main="Pressure vs temperature")
+  text(200, 50, "Note the non-linear relationship")
+}, data=pressure, figure_name="Pressure vs temperature")
+
+publish({
+  data <- as.matrix(mtcars)
+
+  coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
+  heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
+}, data=mtcars, figure_name="Cars")
+```
