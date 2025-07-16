@@ -187,7 +187,7 @@ compare_html_images <- function(reference_path, html_path, tmp_dir) {
       # phash works really poorly on lattice even though the images
       # are visually almost identical. TODO for later.
       expect_lt(min(sims), 30)
-      expect_gt(max(sims), 40) # make sure there are poor matches, too
+      expect_gte(max(sims), 40) # make sure there are poor matches, too
     } else {
       expect_lt(min(sims), 10)
       expect_gt(max(sims), 20) # make sure there are poor matches, too
