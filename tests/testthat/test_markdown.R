@@ -18,6 +18,9 @@ image_phash <- function(image_path, hash_size = 8) {
   pixels <- as.matrix(image_data(img_resized, "gray")[1, , ])
   storage.mode(pixels) <- "numeric"
 
+  image_destroy(img_resized)
+  image_destroy(img)
+
   # CORRECTED LINE: Use dtt::dct() instead of dct_2d()
   dct_matrix <- dtt::dct(pixels)
 
@@ -163,9 +166,10 @@ compare_html_images <- function(reference_path, html_path, tmp_dir) {
     writeBin(decoded_data, img_path)
 
     # Crop out the watermark
-    image_read(img_path) %>%
-      image_crop(paste0(image_info(.)$width, "x", image_info(.)$height - 200, "+0+0")) %>%
-      image_write(path = img_path)
+    img <- image_read(img_path)
+    img %>% image_crop(paste0(image_info(.)$width, "x", image_info(.)$height - 200, "+0+0")) %>%
+    image_write(path = img_path)
+    image_destroy(img)
 
     img_idx <<- img_idx + 1
   })
