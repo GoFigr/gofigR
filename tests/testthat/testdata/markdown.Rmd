@@ -16,9 +16,13 @@ library(patchwork)
 library(ggplotify)
 library(tidyverse)
 library(RColorBrewer)
+library(lattice) 
+
+set.seed(0xC0FFEE)
 
 knitr::opts_chunk$set(echo = TRUE)
-gofigR::enable(auto_publish=TRUE, analysis_name=params$analysis_name)
+gofigR::enable(auto_publish=TRUE, analysis_name=params$analysis_name,
+               watermark = watermark_generator(dynamic_size=FALSE))
 ```
 
 This markdown illustrates GoFigr integration with Rmarkdown. Notice how every figure gets a unique QR code which links to the specific revision on GoFigr. You can navigate to that revision and view the source code, environment details, and figure data.
@@ -37,4 +41,43 @@ publish({
   coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
   heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
 }, data=mtcars, figure_name="Cars")
+```
+
+## Automatic figure capture for ggplot2
+
+```{r correlations, fig.width=7, fig.height=7}
+scatter <- ggplot(mtcars, aes(x=wt, y=mpg, color=cyl, size=cyl)) +
+      geom_point() +
+      theme(legend.position="none") + ggtitle("Correlations")
+
+print(scatter)
+```
+
+## ComplexHeatmap and patchwork
+
+```{r complex_heatmap}
+hm1 <- ComplexHeatmap::Heatmap(matrix(1:100, nrow=10, ncol=10))
+hm2 <- ComplexHeatmap::Heatmap(matrix(1:10, nrow=5, ncol=2))
+
+hm1 %>% publish("Complex heatmap 1")
+hm2 %>% publish("Complex heatmap 2")
+```
+
+```{r}
+((as.ggplot(hm1) + as.ggplot(base2grob(function() {
+   data <- as.matrix(mtcars)
+
+  coul <- colorRampPalette(brewer.pal(8, "PiYG"))(25)
+  heatmap(data, scale="column", col = coul, main="Visualizing mtcars")
+}))) / as.ggplot(hm2)) %>% publish("Patchwork example")
+```
+
+
+## Lattice graphics
+
+```{r lattice, fig.width=7, fig.height=7}
+x <- rnorm(1000)
+y <- rnorm(1000)
+z <- rnorm(1000, sd=10) 
+publish(cloud(z ~ x*y, main = "3D Lattice Graph"), "3D lattice example")
 ```

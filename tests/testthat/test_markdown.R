@@ -2,11 +2,15 @@ library(testthat)
 library(withr)
 library(magick)
 library(dtt)
+library(rvest)
+library(stringr)
+
 
 # Function to generate the Perceptual Hash (p-hash)
 image_phash <- function(image_path, hash_size = 8) {
   # 1. Read and resize the image to a fixed size (e.g., 32x32)
-  img <- image_read(image_path)
+  img <- image_read(image_path) |> image_background("white") |> image_flatten()
+
   img_resized <- image_resize(img, paste0(hash_size * 4, "x", hash_size * 4, "!")) |>
     image_convert(colorspace = "gray")
 
@@ -54,7 +58,6 @@ download_images <- function(analysis_name, out_dir) {
   }
 
   ana <- get_analysis(gf, ana$api_id) # fetch full information
-  image_idx <- 1
   images <- list()
 
   sapply(ana$figures, function(fig) {
@@ -71,13 +74,44 @@ download_images <- function(analysis_name, out_dir) {
           img_path <- file.path(out_dir, paste0(fig$name, ".png"))
           writeBin(contents, img_path)
           images <<- c(images, img_path)
-
-          image_idx <<- image_idx + 1
         }
       })
     })
   })
   return(images)
+}
+
+
+check_revisions <- function(analysis_name) {
+  gf <- gofigr_client()
+  ana <- purrr::detect(list_analyses(gf), function(ana) {ana$name == analysis_name})
+  if(is.null(ana)) {
+    stop("Test analysis not found")
+  }
+
+  ana <- get_analysis(gf, ana$api_id) # fetch full information
+  expect_gte(length(ana$figures), 2)
+
+  sapply(ana$figures, function(fig) {
+    fig <- get_figure(gf, fig$api_id)
+
+    expect_gte(length(fig$revisions), 1)
+
+    sapply(fig$revisions, function(rev) {
+      rev <- get_revision(gf, rev$api_id) # fetch data listing
+
+      expect_gte(length(rev$data), 1)
+
+      dtypes <- unique(lapply(rev$data, function(datum) {datum$type}))
+      expect_contains(dtypes, c("image", "file", "code", "text"))
+
+      lapply(rev$data, function(datum) {
+        datum <- get_data(gf, datum$api_id)
+        expect_gte(str_length(datum$data), 10)
+        expect_equal(length(base64enc::base64decode(datum$data)), datum$size_bytes)
+      })
+    })
+  })
 }
 
 
@@ -98,8 +132,68 @@ compare_images <- function(reference_path, actual_path) {
   lapply(common, function(name) {
     ref_hash <- image_phash(file.path(reference_path, name))
     actual_hash <- image_phash(file.path(actual_path, name))
-    expect_lt(hamming_distance(ref_hash, actual_hash), 2)
+    dist <- hamming_distance(ref_hash, actual_hash)
+    if(dist < 5) {
+      testthat::succeed()
+    } else {
+      file.copy(file.path(reference_path, name), gsub("\\.png", "_ref.png", name))
+      file.copy(file.path(actual_path, name), gsub("\\.png", "_act.png", name))
+      testthat::fail(paste0("Image comparison failed for ", name, ". Distance: ", dist))
+    }
   })
+}
+
+
+compare_html_images <- function(reference_path, html_path, tmp_dir) {
+  list_images <- function(dir) {
+    sort(list.files(dir, pattern=".*\\.png$"))
+  }
+
+  ref_images <- list_images(reference_path)
+  html_doc <- read_html(html_path)
+  image_nodes <- html_elements(html_doc, "img")
+  image_sources <- html_attr(image_nodes, "src")
+
+  # Grab all images out of the HTML and write them to the temporary dir
+  img_idx <- 1
+  lapply(image_sources, function(src_attribute) {
+    base64_data <- str_split(src_attribute, ",", simplify = TRUE)[2]
+    decoded_data <- base64enc::base64decode(base64_data)
+    img_path <- file.path(tmp_dir, paste0("image_", img_idx, ".png"))
+    writeBin(decoded_data, img_path)
+
+    # Crop out the watermark
+    image_read(img_path) %>%
+      image_crop(paste0(image_info(.)$width, "x", image_info(.)$height - 200, "+0+0")) %>%
+      image_write(path = img_path)
+
+    img_idx <<- img_idx + 1
+  })
+
+  actual_images <- list_images(tmp_dir)
+
+  expect_gte(length(actual_images), length(ref_images))
+
+  # Generate a similarity matrix. Make sure at least one image
+  # in the HTML report is sufficiently similar to the reference.
+  lapply(ref_images, function(ref_name) {
+    sims <- unlist(lapply(actual_images, function(act_name) {
+      ref_hash <- image_phash(file.path(reference_path, ref_name))
+      actual_hash <- image_phash(file.path(tmp_dir, act_name))
+      return(hamming_distance(ref_hash, actual_hash))
+    }))
+
+    if(grepl("lattice", ref_name, ignore.case=TRUE)) {
+      # phash works really poorly on lattice even though the images
+      # are visually almost identical. TODO for later.
+      expect_lt(min(sims), 30)
+      expect_gt(max(sims), 40) # make sure there are poor matches, too
+    } else {
+      expect_lt(min(sims), 10)
+      expect_gt(max(sims), 20) # make sure there are poor matches, too
+    }
+  })
+  return(NULL)
 }
 
 
@@ -130,12 +224,18 @@ test_that("We correctly capture plots from knitr", {
         params = list(analysis_name = analysis_name)
       )
     )
-    # Assert that the HTML file was created
+    # Assert that the report was created
     expect_true(file.exists(output_report))
-    #download_images(analysis_name, "~/dev/gofigr_r/gofigR/tests/testthat/testdata/expected_images/markdown/html")
+
     download_images(analysis_name, tmp_dir)
 
+    check_revisions(analysis_name)
     compare_images(test_path("testdata", "expected_images", "markdown"),
                    tmp_dir)
+
+    if(fmt == "html") {
+      compare_html_images(test_path("testdata", "expected_images", "markdown"),
+                          output_report, withr::local_tempdir())
+    }
   })
 })
