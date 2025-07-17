@@ -2,7 +2,7 @@
 % Please edit documentation in R/integrations.R
 \name{enable}
 \alias{enable}
-\title{Enables GoFigr support.}
+\title{Enables GoFigr in the current R/Rmd file.}
 \usage{
 enable(
   auto_publish = FALSE,
@@ -48,5 +48,5 @@ the original figure, the watermarked version will still be published to GoFigr.}
 named list of GoFigr options
 }
 \description{
-Enables GoFigr support.
+Enables GoFigr in the current R/Rmd file.
 }

@@ -319,7 +319,7 @@ display <- function(rev, plot_obj) {
 #'
 #' @param expr The R expression to evaluate.
 #' @return result of evaluating expr
-#' @exportp
+#' @export
 with_isolated_devices <- function(expr) {
   # 1. Backup the original device state
   original_devices <- grDevices::dev.list()
