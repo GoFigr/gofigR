@@ -2,7 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
-*.png
 *tmp*
 *.RDS
 .DS_Store
+*_act.png
+*_ref.png
+

@@ -7,4 +7,4 @@ enable(analysis_name="My first Rmd analysis 2",
        watermark = gofigR::QR_WATERMARK,
        debug=TRUE)
 
-plot(pressure, main="Script output")
+plot(pressure, main="Script output") %>% publish_base

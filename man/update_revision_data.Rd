@@ -4,7 +4,7 @@
 \alias{update_revision_data}
 \title{Updates data associated with a figure}
 \usage{
-update_revision_data(gf, revision, new_data, silent = FALSE)
+update_revision_data(gf, revision, new_data, silent = FALSE, assets = list())
 }
 \arguments{
 \item{gf}{GoFigr client}
@@ -14,6 +14,8 @@ update_revision_data(gf, revision, new_data, silent = FALSE)
 \item{new_data}{new data, as a list of GoFigrData objects (e.g. make_image_data or make_text_data)}
 
 \item{silent}{whether to generate an activity. Internal use only.}
+
+\item{assets}{list of asset revision IDs to be assocaited with this revision}
 }
 \value{
 updated revision

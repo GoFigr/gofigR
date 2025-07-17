@@ -132,6 +132,7 @@ gofigr_client <- function(username=NULL, password=NULL, api_key=NULL,
     local({username=default_if_null(username, config$username)
            password=default_if_null(password, config$password)
            api_key=default_if_null(api_key, config$api_key)
+           base_url=paste0(api_url)
            url=paste0(api_url, "/api/", API_VERSION, "/")
            jwt_url=paste0(api_url, "/api/token/")
            anonymous=anonymous

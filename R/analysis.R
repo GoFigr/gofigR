@@ -41,6 +41,19 @@ get_analysis <- function(gf, api_id) {
 }
 
 
+#' Deletes an analysis given an API ID.
+#'
+#' @param gf GoFigr client
+#' @param api_id API ID for the analysis
+#'
+#' @return server response
+#' @export
+delete_analysis <- function(gf, api_id) {
+  gofigr_DELETE(gf, paste0("analysis/", api_id),
+                expected_status_code = 204)
+}
+
+
 #' Finds an analysis by name, optionally creating one if it doesn't exist.
 #'
 #' @param gf GoFigr client

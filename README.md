@@ -1,12 +1,10 @@
 # gofigR
 
-gofigR is the R client for <https://gofigr.io>, a zero-effort reproducibility engine. It works with any R library which outputs to R graphics devices, with automatic publishing for `ggplot`.
+gofigR is the R client for <https://gofigr.io>, a zero-effort reproducibility engine. It works with any R library which outputs to R graphics devices.
 
 ## Compatibility
 
 gofigR integrates with R markdown, both in `knitr` and in interactive sessions in RStudio. GoFigr also works in scripts. We tested with R 4.3.2 but any reasonably recent version should work.
-
-GoFigr will automatically publish all `ggplot` output assuming you call `gofigR::enable(auto_publish=TRUE)`. GoFigr will *not* publish old-style R plots unless you tell it to. See the "Usage" section below.
 
 ## Installation
 
@@ -56,47 +54,34 @@ To enable GoFigr, simply call `enable` in your setup chunk. You can also optiona
 ```` {.R .rmd}
 ```{r setup, include=FALSE}
 library(gofigR)
-gofigR::enable(auto_publish=TRUE)
+gofigR::enable()
 ```
 ````
 
-`auto_publish` is FALSE by default. Set it to TRUE to override `plot` and `print` and publish figures automatically.
+## Publishing plots
 
-## Automatic output capture
-
-If `auto_publish` is on, GoFigr will intercept all calls to `plot` and `print` and publish the results if they are from a compatible library. At the moment, we support any graphics format also supported by `ggplotify`:
-
--   ggplot2
-
--   ComplexHeatmap
-
--   cowplot
-
--   patchwork
-
--   lattice
-
-## Manual capture
-
-To capture output manually, simply call `publish`:
+To publish plots, simply call `publish`:
 
 ``` r
 hm1 <- Heatmap(matrix(rnorm(100), nrow=10, ncol=10))
 
 publish(hm1, "Heatmaps are cool!")  # second argument is the figure name
+
+# This works, too
+hm1 %>% publish("Heatmaps are cool!")
 ```
 
 ## Capturing base graphics
 
-To capture output from base R plotting, call `publish_base` with a plotting expression:
+To capture output from base R plotting, call `publish` with a plotting expression:
 
 ``` r
-gofigR::publish_base({
+gofigR::publish({
   base::plot(pressure, main="Pressure vs temperature")
   text(200, 50, "Note the non-linear relationship")
 }, data=pressure, figure_name="Pressure vs temperature")
 
-gofigR::publish_base({
+gofigR::publish({
   # The mtcars dataset:
   data <- as.matrix(mtcars)
 
