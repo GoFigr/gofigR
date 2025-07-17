@@ -8,7 +8,6 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-library(gofigR)
 library(ggplot2)
 library(cowplot)
 library(ComplexHeatmap)
@@ -17,12 +16,16 @@ library(ggplotify)
 library(tidyverse)
 library(RColorBrewer)
 library(lattice)
+library(gofigR)
 
 set.seed(0xC0FFEE)
 
 knitr::opts_chunk$set(echo = TRUE)
 gofigR::enable(auto_publish=TRUE, analysis_name=params$analysis_name,
                watermark = watermark_generator(dynamic_size=FALSE))
+
+writeLines("GoFigr!", "test_data.txt")
+gofigR::sync_file("test_data.txt")
 ```
 
 This markdown illustrates GoFigr integration with Rmarkdown. Notice how every figure gets a unique QR code which links to the specific revision on GoFigr. You can navigate to that revision and view the source code, environment details, and figure data.
@@ -50,7 +53,7 @@ scatter <- ggplot(mtcars, aes(x=wt, y=mpg, color=cyl, size=cyl)) +
       geom_point() +
       theme(legend.position="none") + ggtitle("Correlations")
 
-print(scatter)
+gf_print(scatter)
 ```
 
 ## ComplexHeatmap and patchwork

@@ -139,6 +139,21 @@ check_revisions <- function(analysis_name) {
         expect_gte(str_length(datum$data), 10)
         expect_equal(length(base64enc::base64decode(datum$data)), datum$size_bytes)
       })
+
+      expect_equal(length(rev$assets), 1)
+      lapply(rev$assets, function(asset_link) {
+        expect_equal(asset_link$figure_revision, rev$api_id)
+        asset_rev <- get_asset_revision(gf, asset_link$asset_revision)
+        asset <- get_asset(gf, asset_rev$asset)
+
+        expect_equal(asset$name, "test_data.txt")
+
+        sapply(asset_rev$data, function(datum) {
+          datum <- get_data(gf, datum$api_id)
+          contents <- rawToChar(base64enc::base64decode(datum$data))
+          expect_equal(trimws(contents), "GoFigr!")
+        })
+      })
     })
   })
 }
