@@ -500,6 +500,7 @@ publish <- function(plot_obj,
   }
 
   class(rev) <- "gofigr_revision"
+  rev$client <- gf_opts$client
 
   return(rev)
 }

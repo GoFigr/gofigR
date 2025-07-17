@@ -4,41 +4,67 @@ library(magick)
 library(dtt)
 library(rvest)
 library(stringr)
+library(torch)
+library(torchvision)
+library(knitr)
 
 
-# Function to generate the Perceptual Hash (p-hash)
-image_phash <- function(image_path, hash_size = 8) {
-  # 1. Read and resize the image to a fixed size (e.g., 32x32)
-  img <- image_read(image_path) |> image_background("white") |> image_flatten()
+model <- model_resnet18(pretrained = TRUE)
 
-  img_resized <- image_resize(img, paste0(hash_size * 4, "x", hash_size * 4, "!")) |>
-    image_convert(colorspace = "gray")
 
-  # 2. Get pixel values and compute the 2D DCT
-  pixels <- as.matrix(image_data(img_resized, "gray")[1, , ])
-  storage.mode(pixels) <- "numeric"
+# Load the pre-trained ResNet-18 model
+model <- model_resnet18(pretrained = TRUE)
 
-  image_destroy(img_resized)
-  image_destroy(img)
+# Modify the model to output the 512-dimension feature vector
+model$fc <- nn_identity()
 
-  # CORRECTED LINE: Use dtt::dct() instead of dct_2d()
-  dct_matrix <- dtt::dct(pixels)
+# Set the model to evaluation mode
+model$eval()
 
-  # 3. Reduce the DCT to the top-left corner (hash_size x hash_size)
-  dct_subset <- dct_matrix[1:hash_size, 1:hash_size]
 
-  # 4. Compute the median of the DCT values (excluding the first term)
-  median_val <- median(dct_subset[-1])
+get_image_embedding <- function(model, image_path) {
+  # Define the image pre-processing steps
+  transform <- function(img) {
+    img |>
+      image_background("white") |>
+      image_flatten() |>
+      transform_to_tensor() |>
+      transform_resize(size = c(224, 224)) |>
+      transform_normalize(mean = c(0.485, 0.456, 0.406), std = c(0.229, 0.224, 0.225)) |>
+      torch_unsqueeze(1)
+  }
 
-  # 5. Create the hash: 1 if the DCT value is > median, otherwise 0
-  phash <- as.vector(t(dct_subset > median_val))
-  return(phash)
+  # Load and process the image
+  image <- image_read(image_path)
+  image_tensor <- transform(image)
+
+  # Generate the embedding (disabling gradient calculation for efficiency)
+  with_no_grad({
+    embedding_tensor <- model(image_tensor)
+  })
+
+  # Return the embedding as a standard R vector
+  as.numeric(embedding_tensor)
 }
 
 
-# Function to calculate the Hamming distance between two hashes
-hamming_distance <- function(hash1, hash2) {
-  sum(hash1 != hash2)
+cosine_similarity <- function(x, y) {
+  # The dot product of vectors x and y
+  dot_product <- x %*% y
+
+  # The product of the vector magnitudes
+  magnitude_product <- sqrt(sum(x^2)) * sqrt(sum(y^2))
+
+  # Return the final similarity value
+  return(dot_product / magnitude_product)
+}
+
+
+image_similarity_score <- function(model, path1, path2) {
+  vec1 <- get_image_embedding(model, path1)
+  vec2 <- get_image_embedding(model, path2)
+
+  return(cosine_similarity(vec1, vec2))
 }
 
 
@@ -133,15 +159,16 @@ compare_images <- function(reference_path, actual_path) {
   expect_gte(length(common), 2)
 
   lapply(common, function(name) {
-    ref_hash <- image_phash(file.path(reference_path, name))
-    actual_hash <- image_phash(file.path(actual_path, name))
-    dist <- hamming_distance(ref_hash, actual_hash)
-    if(dist < 5) {
+    score <- image_similarity_score(model,
+                                    file.path(reference_path, name),
+                                    file.path(actual_path, name))
+    if(score > 0.90) {
       testthat::succeed()
     } else {
-      file.copy(file.path(reference_path, name), gsub("\\.png", "_ref.png", name))
-      file.copy(file.path(actual_path, name), gsub("\\.png", "_act.png", name))
-      testthat::fail(paste0("Image comparison failed for ", name, ". Distance: ", dist))
+      testthat::fail(paste0("Image comparison failed for ", name, ". Distance: ", dist,
+                            ": \n",
+                            "  - Reference: ", file.path(reference_path, name),
+                            "\n  - Actual: ", file.path(actual_path, name)))
     }
   })
 }
@@ -182,20 +209,14 @@ compare_html_images <- function(reference_path, html_path, tmp_dir) {
   # in the HTML report is sufficiently similar to the reference.
   lapply(ref_images, function(ref_name) {
     sims <- unlist(lapply(actual_images, function(act_name) {
-      ref_hash <- image_phash(file.path(reference_path, ref_name))
-      actual_hash <- image_phash(file.path(tmp_dir, act_name))
-      return(hamming_distance(ref_hash, actual_hash))
+      return(image_similarity_score(model,
+                                    file.path(reference_path, ref_name),
+                                    file.path(tmp_dir, act_name)))
     }))
 
-    if(grepl("lattice", ref_name, ignore.case=TRUE)) {
-      # phash works really poorly on lattice even though the images
-      # are visually almost identical. TODO for later.
-      expect_lt(min(sims), 30)
-      expect_gte(max(sims), 40) # make sure there are poor matches, too
-    } else {
-      expect_lt(min(sims), 10)
-      expect_gt(max(sims), 20) # make sure there are poor matches, too
-    }
+
+    expect_gte(max(sims), 0.90)
+    expect_gte(sd(sims), 0.01) # make sure there's some variability
   })
   return(NULL)
 }
@@ -243,3 +264,51 @@ test_that("We correctly capture plots from knitr", {
     }
   })
 })
+
+
+replace_in_file <- function(filepath, old_string, new_string) {
+  # Read the content of the file
+  content <- readLines(filepath)
+
+  # Replace all occurrences of the old string with the new string
+  modified_content <- gsub(old_string, new_string, content, fixed = TRUE)
+
+  # Write the modified content back to the file
+  writeLines(modified_content, filepath)
+
+  # Optionally, return a message
+  message(paste("Replaced", old_string, "with", new_string, "in", filepath))
+}
+
+
+test_that("We correctly capture plots from scripts", {
+  skip_on_cran()
+
+  analysis_name <- paste0("Script test ", uuid::UUIDgenerate())
+
+  defer({cleanup(analysis_name)})
+
+  tmp_dir <- withr::local_tempdir()
+
+  input_rmd <- test_path("testdata", "markdown.Rmd")
+  script_path <- test_path(tmp_dir, "script.R")
+  expect_true(file.exists(input_rmd))
+
+  # Convert to a plain ol' R script
+  knitr::purl(input_rmd, output = script_path)
+  expect_true(file.exists(script_path))
+
+  rscript_path <- file.path(R.home("bin"), "Rscript")
+  expect_true(file.exists(rscript_path))
+
+  # Gross but knitr::purl doesn't support params
+  replace_in_file(script_path, "Automated markdown test", analysis_name)
+
+  system2(rscript_path, args = script_path)
+
+  download_images(analysis_name, tmp_dir)
+  check_revisions(analysis_name)
+  compare_images(test_path("testdata", "expected_images", "markdown"),
+                 tmp_dir)
+})
+

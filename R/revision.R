@@ -32,7 +32,13 @@ get_revision_url <- function(rev) {
     return(NULL)
   }
 
-  paste0(APP_URL, "/r/", rev$api_id)
+  if("client" %in% names(rev)) {
+    base_url <- gsub("api", "app", rev$client$base_url)
+  } else {
+    base_url <- APP_URL
+  }
+
+  paste0(base_url, "/r/", rev$api_id)
 }
 
 #' Creates a new revision
