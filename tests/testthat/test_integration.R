@@ -155,7 +155,6 @@ compare_images <- function(reference_path, actual_path) {
   common <- intersect(ref_images, actual_images)
   diff <- c(setdiff(ref_images, actual_images), setdiff(actual_images, ref_images))
 
-  expect_length(diff, 0)
   if(length(diff) > 0) {
     testthat::fail(diff)
   }
