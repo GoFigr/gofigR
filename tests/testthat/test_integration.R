@@ -83,7 +83,7 @@ download_images <- function(analysis_name, out_dir) {
   gf <- gofigr_client()
   ana <- purrr::detect(list_analyses(gf), function(ana) {ana$name == analysis_name})
   if(is.null(ana)) {
-    stop("Test analysis not found")
+    stop(paste0("Test analysis not found: ", analysis_name))
   }
 
   ana <- get_analysis(gf, ana$api_id) # fetch full information
@@ -156,6 +156,9 @@ compare_images <- function(reference_path, actual_path) {
   diff <- c(setdiff(ref_images, actual_images), setdiff(actual_images, ref_images))
 
   expect_length(diff, 0)
+  if(length(diff) > 0) {
+    testthat::fail(diff)
+  }
   expect_gte(length(common), 2)
 
   lapply(common, function(name) {
