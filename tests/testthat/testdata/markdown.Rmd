@@ -8,6 +8,7 @@ params:
 ---
 
 ```{r setup, include=FALSE}
+library(gofigR)
 library(ggplot2)
 library(cowplot)
 library(ComplexHeatmap)
@@ -15,9 +16,7 @@ library(patchwork)
 library(ggplotify)
 library(tidyverse)
 library(RColorBrewer)
-library(lattice) 
-
-devtools::load_all()
+library(lattice)
 
 set.seed(0xC0FFEE)
 
