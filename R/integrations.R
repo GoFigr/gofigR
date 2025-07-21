@@ -585,10 +585,96 @@ intercept_base <- function(env=.GlobalEnv) {
 #' @returns null
 #' @export
 sync_file <- function(path) {
-  opts <- get_options()
-  asset_rev <- sync_workspace_asset(opts$client, opts$workspace, path)
-  opts$assets[[get_api_id(asset_rev)]] <- asset_rev
+  if(check_configured()) {
+    opts <- get_options()
+    asset_rev <- sync_workspace_asset(opts$client, opts$workspace, path)
+    message(paste0("Asset synced: ", APP_URL, "/asset_revision/", asset_rev$api_id))
+    opts$assets[[get_api_id(asset_rev)]] <- asset_rev
+  }
+  return(path)
 }
+
+wrap_reader <- function(reader) {
+  function(path, ...) {
+    reader(sync_file(path), ...)
+  }
+}
+
+#' Syncs a file with the GoFigr service and stores a reference. The file
+#' will be associated with all figures published after this call.
+#'
+#' @param path path to the file
+#' @param ... passed to utils::read.csv
+#'
+#' @returns data frame
+#' @export
+read.csv <- wrap_reader(utils::read.csv)
+
+
+#' Syncs a file with the GoFigr service and stores a reference. The file
+#' will be associated with all figures published after this call.
+#'
+#' @param path path to the file
+#' @param ... passed to utils::read.csv
+#'
+#' @returns data frame
+#' @export
+read.csv2 <- wrap_reader(utils::read.csv2)
+
+
+#' Syncs a file with the GoFigr service and stores a reference. The file
+#' will be associated with all figures published after this call.
+#'
+#' @param path path to the file
+#' @param ... passed to readr::read_csv
+#'
+#' @returns data frame
+#' @export
+read_csv <- wrap_reader(readr::read_csv)
+
+
+#' Syncs a file with the GoFigr service and stores a reference. The file
+#' will be associated with all figures published after this call.
+#'
+#' @param path path to the file
+#' @param ... passed to readr::read_csv2
+#'
+#' @returns data frame
+#' @export
+read_csv2 <- wrap_reader(readr::read_csv2)
+
+
+#' Syncs a file with the GoFigr service and stores a reference. The file
+#' will be associated with all figures published after this call.
+#'
+#' @param path path to the file
+#' @param ... passed to readr::read_tsv
+#'
+#' @returns data frame
+#' @export
+read_tsv <- wrap_reader(readr::read_tsv)
+
+
+#' Syncs a file with the GoFigr service and stores a reference. The file
+#' will be associated with all figures published after this call.
+#'
+#' @param path path to the file
+#' @param ... passed to readr::read_delim
+#'
+#' @returns data frame
+#' @export
+read_delim <- wrap_reader(readr::read_delim)
+
+
+#' Syncs a file with the GoFigr service and stores a reference. The file
+#' will be associated with all figures published after this call.
+#'
+#' @param path path to the file
+#' @param ... passed to openxlsx::read.xlsx
+#'
+#' @returns data frame
+#' @export
+read.xlsx <- wrap_reader(openxlsx::read.xlsx)
 
 
 #' Enables GoFigr in the current R/Rmd file.

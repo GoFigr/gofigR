@@ -1,7 +1,7 @@
 Package: gofigR
 Type: Package
 Title: Client for 'GoFigr.io'
-Version: 1.1.0
+Version: 1.1.1
 Authors@R: c(
     person(family="Pacula", given="Maciej", email="maciej@gofigr.io", role=c("cre", "aut")),
     person(given="Flagstaff Solutions, LLC", role=c("cph"))
