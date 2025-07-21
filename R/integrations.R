@@ -588,6 +588,7 @@ sync_file <- function(path) {
   if(check_configured()) {
     opts <- get_options()
     asset_rev <- sync_workspace_asset(opts$client, opts$workspace, path)
+    message(paste0("Asset synced: ", APP_URL, "/asset_revision/", asset_rev$api_id))
     opts$assets[[get_api_id(asset_rev)]] <- asset_rev
   }
   return(path)
