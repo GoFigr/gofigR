@@ -7,6 +7,7 @@ set -e
 R -e "remotes::install_deps(dependencies=TRUE)"
 R -e "roxygen2::roxygenize(clean=TRUE)"
 git add man/*Rd
+export _R_CHECK_DEPENDS_ONLY_=true
 R CMD build .
 R CMD check --as-cran gofigR*tar.gz
 

@@ -1,45 +1,21 @@
-library(testthat)
-library(withr)
-library(magick)
-library(dtt)
-library(rvest)
-library(stringr)
-library(torch)
-library(torchvision)
-library(knitr)
-
-
-model <- model_resnet18(pretrained = TRUE)
-
-
-# Load the pre-trained ResNet-18 model
-model <- model_resnet18(pretrained = TRUE)
-
-# Modify the model to output the 512-dimension feature vector
-model$fc <- nn_identity()
-
-# Set the model to evaluation mode
-model$eval()
-
-
 get_image_embedding <- function(model, image_path) {
   # Define the image pre-processing steps
   transform <- function(img) {
     img |>
-      image_background("white") |>
-      image_flatten() |>
-      transform_to_tensor() |>
-      transform_resize(size = c(224, 224)) |>
-      transform_normalize(mean = c(0.485, 0.456, 0.406), std = c(0.229, 0.224, 0.225)) |>
-      torch_unsqueeze(1)
+      magick::image_background("white") |>
+      magick::image_flatten() |>
+      torchvision::transform_to_tensor() |>
+      torchvision::transform_resize(size = c(224, 224)) |>
+      torchvision::transform_normalize(mean = c(0.485, 0.456, 0.406), std = c(0.229, 0.224, 0.225)) |>
+      torch::torch_unsqueeze(1)
   }
 
   # Load and process the image
-  image <- image_read(image_path)
+  image <- magick::image_read(image_path)
   image_tensor <- transform(image)
 
   # Generate the embedding (disabling gradient calculation for efficiency)
-  with_no_grad({
+  torch::with_no_grad({
     embedding_tensor <- model(image_tensor)
   })
 
@@ -119,39 +95,39 @@ check_revisions <- function(analysis_name) {
   }
 
   ana <- get_analysis(gf, ana$api_id) # fetch full information
-  expect_gte(length(ana$figures), 2)
+  testthat::expect_gte(length(ana$figures), 2)
 
   sapply(ana$figures, function(fig) {
     fig <- get_figure(gf, fig$api_id)
 
-    expect_gte(length(fig$revisions), 1)
+    testthat::expect_gte(length(fig$revisions), 1)
 
     sapply(fig$revisions, function(rev) {
       rev <- get_revision(gf, rev$api_id) # fetch data listing
 
-      expect_gte(length(rev$data), 1)
+      testthat::expect_gte(length(rev$data), 1)
 
       dtypes <- unique(lapply(rev$data, function(datum) {datum$type}))
-      expect_contains(dtypes, c("image", "file", "code", "text"))
+      testthat::expect_contains(dtypes, c("image", "file", "code", "text"))
 
       lapply(rev$data, function(datum) {
         datum <- get_data(gf, datum$api_id)
-        expect_gte(str_length(datum$data), 10)
-        expect_equal(length(base64enc::base64decode(datum$data)), datum$size_bytes)
+        testthat::expect_gte(str_length(datum$data), 10)
+        testthat::expect_equal(length(base64enc::base64decode(datum$data)), datum$size_bytes)
       })
 
-      expect_equal(length(rev$assets), 1)
+      testthat::expect_equal(length(rev$assets), 1)
       lapply(rev$assets, function(asset_link) {
-        expect_equal(asset_link$figure_revision, rev$api_id)
+        testthat::expect_equal(asset_link$figure_revision, rev$api_id)
         asset_rev <- get_asset_revision(gf, asset_link$asset_revision)
         asset <- get_asset(gf, asset_rev$asset)
 
-        expect_equal(asset$name, "test_data.txt")
+        testthat::expect_equal(asset$name, "test_data.txt")
 
         sapply(asset_rev$data, function(datum) {
           datum <- get_data(gf, datum$api_id)
           contents <- rawToChar(base64enc::base64decode(datum$data))
-          expect_equal(trimws(contents), "GoFigr!")
+          testthat::expect_equal(trimws(contents), "GoFigr!")
         })
       })
     })
@@ -159,7 +135,7 @@ check_revisions <- function(analysis_name) {
 }
 
 
-compare_images <- function(reference_path, actual_path) {
+compare_images <- function(model, reference_path, actual_path) {
   list_images <- function(dir) {
     sort(list.files(dir, pattern=".*\\.png$"))
   }
@@ -173,7 +149,7 @@ compare_images <- function(reference_path, actual_path) {
   if(length(diff) > 0) {
     testthat::fail(diff)
   }
-  expect_gte(length(common), 2)
+  testthat::expect_gte(length(common), 2)
 
   lapply(common, function(name) {
     score <- image_similarity_score(model,
@@ -191,15 +167,15 @@ compare_images <- function(reference_path, actual_path) {
 }
 
 
-compare_html_images <- function(reference_path, html_path, tmp_dir) {
+compare_html_images <- function(model, reference_path, html_path, tmp_dir) {
   list_images <- function(dir) {
     sort(list.files(dir, pattern=".*\\.png$"))
   }
 
   ref_images <- list_images(reference_path)
-  html_doc <- read_html(html_path)
-  image_nodes <- html_elements(html_doc, "img")
-  image_sources <- html_attr(image_nodes, "src")
+  html_doc <- rvest::read_html(html_path)
+  image_nodes <- rvest::html_elements(html_doc, "img")
+  image_sources <- rvest::html_attr(image_nodes, "src")
 
   # Grab all images out of the HTML and write them to the temporary dir
   img_idx <- 1
@@ -210,17 +186,19 @@ compare_html_images <- function(reference_path, html_path, tmp_dir) {
     writeBin(decoded_data, img_path)
 
     # Crop out the watermark
-    img <- image_read(img_path)
-    img %>% image_crop(paste0(image_info(.)$width, "x", image_info(.)$height - 200, "+0+0")) %>%
-    image_write(path = img_path)
-    image_destroy(img)
+    img <- magick::image_read(img_path)
+    img %>% magick::image_crop(paste0(magick::image_info(.)$width,
+                                      "x",
+                                      magick::image_info(.)$height - 200, "+0+0")) %>%
+    magick::image_write(path = img_path)
+    magick::image_destroy(img)
 
     img_idx <<- img_idx + 1
   })
 
   actual_images <- list_images(tmp_dir)
 
-  expect_gte(length(actual_images), length(ref_images))
+  testthat::expect_gte(length(actual_images), length(ref_images))
 
   # Generate a similarity matrix. Make sure at least one image
   # in the HTML report is sufficiently similar to the reference.
@@ -232,32 +210,48 @@ compare_html_images <- function(reference_path, html_path, tmp_dir) {
     }))
 
 
-    expect_gte(max(sims), 0.90)
-    expect_gte(sd(sims), 0.01) # make sure there's some variability
+    testthat::expect_gte(max(sims), 0.90)
+    testthat::expect_gte(sd(sims), 0.01) # make sure there's some variability
   })
   return(NULL)
+}
+
+
+get_model <- function() {
+  # Load the pre-trained ResNet-18 model
+  model <- torchvision::model_resnet18(pretrained = TRUE)
+
+  # Modify the model to output the 512-dimension feature vector
+  model$fc <- torch::nn_identity()
+
+  # Set the model to evaluation mode
+  model$eval()
+
+  return(model)
 }
 
 
 test_that("We correctly capture plots from knitr", {
   skip_on_cran()
 
+  model <- get_model()
+
   lapply(c("html", "pdf"), function(fmt) {
     analysis_name <- paste0("Markdown test ", uuid::UUIDgenerate())
 
-    defer({cleanup(analysis_name)})
+    withr::defer({cleanup(analysis_name)})
 
     tmp_dir <- withr::local_tempdir()
 
     # 1. Define paths
     input_rmd <- test_path("testdata", "markdown.Rmd")
-    expect_true(file.exists(input_rmd))
+    testthat::expect_true(file.exists(input_rmd))
 
     # Output files in a temporary directory
     output_report <- tempfile(fileext = paste0(".", fmt))
 
     # 2. Render to HTML and check for success
-    expect_no_error(
+    testthat::expect_no_error(
       rmarkdown::render(
         input = input_rmd,
         output_format = paste0(fmt, "_document"),
@@ -267,16 +261,18 @@ test_that("We correctly capture plots from knitr", {
       )
     )
     # Assert that the report was created
-    expect_true(file.exists(output_report))
+    testthat::expect_true(file.exists(output_report))
 
     download_images(analysis_name, tmp_dir)
 
     check_revisions(analysis_name)
-    compare_images(test_path("testdata", "expected_images", "markdown"),
+    compare_images(model,
+                   test_path("testdata", "expected_images", "markdown"),
                    tmp_dir)
 
     if(fmt == "html") {
-      compare_html_images(test_path("testdata", "expected_images", "markdown"),
+      compare_html_images(model,
+                          test_path("testdata", "expected_images", "markdown"),
                           output_report, withr::local_tempdir())
     }
   })
@@ -301,22 +297,24 @@ replace_in_file <- function(filepath, old_string, new_string) {
 test_that("We correctly capture plots from scripts", {
   skip_on_cran()
 
+  model <- get_model()
+
   analysis_name <- paste0("Script test ", uuid::UUIDgenerate())
 
-  defer({cleanup(analysis_name)})
+  withr::defer({cleanup(analysis_name)})
 
   tmp_dir <- withr::local_tempdir()
 
   input_rmd <- test_path("testdata", "markdown.Rmd")
   script_path <- test_path(tmp_dir, "script.R")
-  expect_true(file.exists(input_rmd))
+  testthat::expect_true(file.exists(input_rmd))
 
   # Convert to a plain ol' R script
   knitr::purl(input_rmd, output = script_path)
-  expect_true(file.exists(script_path))
+  testthat::expect_true(file.exists(script_path))
 
   rscript_path <- file.path(R.home("bin"), "Rscript")
-  expect_true(file.exists(rscript_path))
+  testthat::expect_true(file.exists(rscript_path))
 
   # Gross but knitr::purl doesn't support params
   replace_in_file(script_path, "Automated markdown test", analysis_name)
@@ -325,7 +323,8 @@ test_that("We correctly capture plots from scripts", {
 
   download_images(analysis_name, tmp_dir)
   check_revisions(analysis_name)
-  compare_images(test_path("testdata", "expected_images", "markdown"),
+  compare_images(model,
+                 test_path("testdata", "expected_images", "markdown"),
                  tmp_dir)
 })
 
