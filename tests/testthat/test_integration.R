@@ -1,7 +1,6 @@
 library(testthat)
 library(withr)
 library(magick)
-library(dtt)
 library(rvest)
 library(stringr)
 library(torch)
