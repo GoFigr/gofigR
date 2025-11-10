@@ -37,7 +37,7 @@ create_analysis <- function(gf, name, description=NULL, workspace=NULL) {
 #' @return analysis object
 #' @export
 get_analysis <- function(gf, api_id) {
-  response_to_JSON(gofigr_GET(gf, paste0("analysis/", api_id)))
+  response_to_JSON(gofigr_GET(gf, paste0("analysis/", api_id, "/")))
 }
 
 

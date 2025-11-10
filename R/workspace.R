@@ -6,7 +6,7 @@
 #' @return workspace details
 #' @export
 get_workspace <- function(gf, api_id) {
-  response_to_JSON(gofigr_GET(gf, paste0("workspace/", api_id)))
+  response_to_JSON(gofigr_GET(gf, paste0("workspace/", api_id, "/")))
 }
 
 #' List all workspaces available to the user.

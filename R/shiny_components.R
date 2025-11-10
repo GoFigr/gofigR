@@ -131,6 +131,8 @@ gfPlotServer <- function(id, expr, metadata=NULL,
 
       if(shiny::is.reactivevalues(metadata)) {
         metadata <- shiny::reactiveValuesToList(metadata)
+      } else if(shiny::is.reactive(metadata)) {
+        metadata <- metadata()
       }
 
       if(base_graphics) {
@@ -140,7 +142,7 @@ gfPlotServer <- function(id, expr, metadata=NULL,
       }
 
       values$revision = pub(plot_func(),
-                            metadata=list(`Shiny inputs`=metadata),
+                            metadata=metadata,
                             figure_name=figure_name)
       shinyjs::hide(id="loader")
       shinyjs::show(id="watermark-container")

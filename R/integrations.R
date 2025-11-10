@@ -739,6 +739,7 @@ read.xlsx <- wrap_reader(openxlsx::read.xlsx)
 #' only affects the display and doesn't change what gets published: e.g. even if you choose to display \
 #' the original figure, the watermarked version will still be published to GoFigr.
 #' @param api_key GoFigr API key
+#' @param url GoFigr API URL
 #'
 #' @return named list of GoFigr options
 #' @export
@@ -755,6 +756,7 @@ enable <- function(auto_publish=FALSE,
                    verbose=FALSE,
                    debug=FALSE,
                    api_key=NULL,
+                   url=NULL,
                    show="watermark") {
   check_show_setting(show)
 
@@ -767,7 +769,8 @@ enable <- function(auto_publish=FALSE,
   # Create the GoFigr client
   gf <- gofigr_client(workspace = workspace,
                       verbose = verbose,
-                      api_key = api_key)
+                      api_key = api_key,
+                      url = url)
 
   # Find the workspace
   if(!is.null(workspace)) {

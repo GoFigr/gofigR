@@ -40,11 +40,22 @@ create_figure <- function(gf, analysis, name, description=NULL) {
 #' @return figure object
 #' @export
 find_figure <- function(gf, analysis, name, description=NULL, create=FALSE) {
-  ana <- get_analysis(gf, get_api_id(analysis))
+  if(is.null(analysis)) {
+    stop("Please specify an analysis")
+  } else if(is.character(analysis)) {
+    stop("Please pass a valid analysis object instead of just the ID")
+  }
+
+  if(is.null(analysis$figures)) {
+    analysis$figures <- get_analysis(gf, analysis$api_id)$figures
+  }
+
   find_or_create(gf, name, create=create,
                  type="figure",
-                 get_list=function() { ana$figures },
+                 get_list=function() { analysis$figures },
                  do_create=function() {
-                   create_figure(gf, name, description, analysis=get_api_id(ana))
+                   new_fig <- create_figure(gf, name, description, analysis=analysis)
+                   analysis$figures <<- append(analysis$figures, list(new_fig))
+                   return(new_fig)
                  })
 }
