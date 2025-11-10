@@ -5,16 +5,13 @@
 library(shiny)
 library(ggplot2)
 library(gofigR)
+library(digest)
 library(SummarizedExperiment)
 
 gofigR::enable(url="https://api.gofigr.io")
 
-# --- 1. Load and Prepare Data ONCE ---
-# This code runs a single time when the app first starts.
-
-# Load the SummarizedExperiment object you created
-# Make sure this file is in the same directory as this 'app.R' file.
-se <- readRDS("TCGA-LUAD_TPM_SE_subset.rds")
+DATA_PATH <- "TCGA-LUAD_TPM_SE_subset.rds"
+se <- readRDS(DATA_PATH)
 
 # Get gene symbols (e.g., "EGFR", "TP53", ...) for the dropdown
 gene_choices <- rowData(se)$gene_name
@@ -99,6 +96,12 @@ server <- function(input, output, session) {
     frame <- filtered_data()
     res <- reactiveValuesToList(input)
     res$patients <- row.names(frame)
+    res$data_cube <- list(version="1.2.3-prod",
+                          hash=digest(
+                            object = DATA_PATH,
+                            algo = "sha256",  # Specify the algorithm
+                            file = TRUE       # Tell the function to treat 'object' as a file path
+                          ))
     return(res)
   })
 
