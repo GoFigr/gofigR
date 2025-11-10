@@ -7,7 +7,8 @@ library(gofigR)
 library(DT)
 library(SummarizedExperiment)
 
-gofigR::enable(url = "https://api.gofigr.io")
+gofigR::enable(url = "https://api.gofigr.io",
+               analysis_name = "TCGA")
 
 # Load the SummarizedExperiment object once at startup
 se <- readRDS("TCGA-LUAD_TPM_SE_subset.rds")
@@ -55,7 +56,7 @@ server <- function(input, output, session) {
     withProgress({
       setProgress(message="Searching revisions...")
       client <- gofigR::get_client()
-      ana <- gofigR::find_analysis(client, "shiny_tcga.R")
+      ana <- gofigR::find_analysis(client, "TCGA")
       ana <- gofigR::get_analysis(client, ana$api_id)
 
       all_revisions <- NULL
@@ -70,7 +71,8 @@ server <- function(input, output, session) {
       matches <- NULL
       lapply(all_revisions, function(rev) {
         meta <- rev$metadata
-        if(!is.null(meta) && "patients" %in% names(meta) && any(input$selected_patients %in% unlist(meta$patients))) {
+        if(!is.null(meta) && "patients" %in% names(meta) &&
+           any(input$selected_patients %in% unlist(meta$patients))) {
           matches <<- append(matches, list(rev))
         }
       })

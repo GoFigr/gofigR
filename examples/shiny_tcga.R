@@ -8,7 +8,8 @@ library(gofigR)
 library(digest)
 library(SummarizedExperiment)
 
-gofigR::enable(url="https://api.gofigr.io")
+gofigR::enable(url="https://api.gofigr.io",
+               analysis_name = "TCGA")
 
 DATA_PATH <- "TCGA-LUAD_TPM_SE_subset.rds"
 se <- readRDS(DATA_PATH)
@@ -76,10 +77,6 @@ ui <- fluidPage(
     )
   )
 )
-
-
-# --- 3. Server Logic ---
-# Defines how the inputs are used to create the outputs (the plot)
 
 server <- function(input, output, session) {
   filtered_data <- reactive({
