@@ -2,16 +2,19 @@
 % Please edit documentation in R/gfconfig.R
 \name{login_with_username}
 \alias{login_with_username}
-\title{Prompts the user for username & password and logs into GoFigr}
+\title{Prompts the user for username and password and logs into GoFigr.}
 \usage{
 login_with_username(max_attempts)
 }
 \arguments{
-\item{max_attempts}{maximum number of login attempts before giving up}
+\item{max_attempts}{Maximum number of login attempts before giving up.}
 }
 \value{
-GoFigr client
+A configured GoFigr client object authenticated with username
+  and password.
 }
 \description{
-Prompts the user for username & password and logs into GoFigr
+This function interactively requests credentials, attempts authentication
+against the GoFigr API, and retries a limited number of times on failure.
+It is primarily used by `gfconfig()` and is not intended for scripted use.
 }

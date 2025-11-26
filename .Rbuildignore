@@ -2,10 +2,13 @@
 ^\.Rproj\.user$
 ^example\.*R
 examples/*
-.*RDS
+.*[Rr][Dd][Ss]
+.*[Rr][Dd][Aa]
 .*\.png
 ^cran-comments\.md$
 gofigR.*\.tar.gz
 .*\.sh
 tmp.*
 .*\.pdf
+^GDCdata$
+MANIFEST.txt

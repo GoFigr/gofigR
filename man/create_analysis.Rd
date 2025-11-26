@@ -2,22 +2,25 @@
 % Please edit documentation in R/analysis.R
 \name{create_analysis}
 \alias{create_analysis}
-\title{Creates a new analysis}
+\title{Create a new analysis within a workspace.}
 \usage{
 create_analysis(gf, name, description = NULL, workspace = NULL)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{name}{analysis name}
+\item{name}{Human-readable analysis name.}
 
-\item{description}{analysis description}
+\item{description}{Optional longer description of the analysis.}
 
-\item{workspace}{analysis will be created under this workspace. Can be a workspace object or an API ID.}
+\item{workspace}{Workspace under which the analysis will be created. Can be
+a workspace object or an API ID. If `NULL`, the client's default workspace
+is used.}
 }
 \value{
-created analysis
+The created analysis object as returned by the API.
 }
 \description{
-Creates a new analysis
+Analyses act as containers for figures, data and revisions. This helper
+creates a fresh analysis under the specified workspace.
 }

@@ -18,6 +18,7 @@ enable(
   verbose = FALSE,
   debug = FALSE,
   api_key = NULL,
+  url = NULL,
   show = "watermark"
 )
 }
@@ -48,6 +49,8 @@ that setting this option will re-assign plot() and print() in the global environ
 \item{debug}{whether to show debugging information}
 
 \item{api_key}{GoFigr API key}
+
+\item{url}{GoFigr API URL}
 
 \item{show}{which figure to display in the document: original, watermark, or hide. Note that this setting \
 only affects the display and doesn't change what gets published: e.g. even if you choose to display \

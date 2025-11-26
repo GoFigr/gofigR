@@ -2,22 +2,29 @@
 % Please edit documentation in R/gfconfig.R
 \name{read_prompt}
 \alias{read_prompt}
-\title{Reads a prompt from stdin and performs optional validation}
+\title{Reads a line from stdin with optional validation and retry logic.}
 \usage{
 read_prompt(prompt, validate = NULL, attempt = 1, max_attempts = 2)
 }
 \arguments{
-\item{prompt}{prompt, e.g. "Enter username: "}
+\item{prompt}{Character string shown to the user, e.g. "Enter username: ".}
 
-\item{validate}{function input => transformed input if input is valid or, error}
+\item{validate}{Optional function taking a single character argument and
+either returning a transformed value or throwing an error if the value
+is invalid.}
 
-\item{attempt}{current attempt at getting a valid input}
+\item{attempt}{Current attempt number (used internally for recursion).}
 
-\item{max_attempts}{maximum number of attempts}
+\item{max_attempts}{Maximum number of attempts before giving up and
+throwing an error.}
 }
 \value{
-input, or result of validate(input) if validate is supplied
+The raw input string, or the result of `validate(input)` if
+  a validation function is supplied.
 }
 \description{
-Reads a prompt from stdin and performs optional validation
+This is a small helper used by the GoFigr configuration wizard to collect
+user input interactively. When a validation function is supplied, the input
+will be repeatedly requested until it passes validation or the maximum
+number of attempts is reached.
 }

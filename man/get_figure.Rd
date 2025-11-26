@@ -2,18 +2,21 @@
 % Please edit documentation in R/figure.R
 \name{get_figure}
 \alias{get_figure}
-\title{Fetches a figure given an API ID.}
+\title{Fetch a single figure by API ID.}
 \usage{
 get_figure(gf, api_id)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client created by `gofigr_client()`.}
 
-\item{api_id}{API ID for the figure}
+\item{api_id}{Character string with the API ID of the figure to fetch.}
 }
 \value{
-figure object
+A figure object as returned by the API (an environment), including
+  metadata and revision information.
 }
 \description{
-Fetches a figure given an API ID.
+This is a low-level helper that retrieves the raw figure object from the
+GoFigr API. It is typically used after you already know the figure's
+`api_id`, for example from an analysis or figure listing.
 }

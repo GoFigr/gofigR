@@ -2,22 +2,27 @@
 % Please edit documentation in R/workspace.R
 \name{find_workspace}
 \alias{find_workspace}
-\title{Finds a workspace by name, optionally creating it if doesn't exist}
+\title{Find a workspace by name, optionally creating it.}
 \usage{
 find_workspace(gf, name, description = NULL, create = FALSE)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{name}{name of the workspace to find}
+\item{name}{Name of the workspace to find.}
 
-\item{description}{workspace description if creating a new one}
+\item{description}{Optional description to use if a new workspace is
+created.}
 
-\item{create}{if TRUE and workspace is not found, it will be created}
+\item{create}{Logical; if `TRUE` and the workspace does not exist, a new
+one is created. If `FALSE`, an error is thrown when no matching workspace
+is found.}
 }
 \value{
-workspace if found; throws an error if not.
+A workspace object corresponding to the matching (or newly created)
+  workspace.
 }
 \description{
-Finds a workspace by name, optionally creating it if doesn't exist
+Searches the workspaces visible to the current user by name and, optionally,
+creates a new workspace when no match is found.
 }

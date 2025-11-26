@@ -2,18 +2,21 @@
 % Please edit documentation in R/analysis.R
 \name{list_analyses}
 \alias{list_analyses}
-\title{Lists analyses under a workspace.}
+\title{List analyses within a workspace.}
 \usage{
 list_analyses(gf, workspace_id = NULL)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{workspace_id}{API id of the workspace}
+\item{workspace_id}{Optional API ID of the workspace to inspect. If `NULL`,
+the default workspace configured on the client (`gf$workspace`) is used.}
 }
 \value{
-list of analyses
+A list of analysis objects associated with the selected workspace.
 }
 \description{
-Lists analyses under a workspace.
+This is a convenience wrapper around `get_workspace()` that returns only
+the analyses associated with a workspace, rather than the full workspace
+object.
 }

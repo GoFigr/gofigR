@@ -2,20 +2,21 @@
 % Please edit documentation in R/workspace.R
 \name{create_workspace}
 \alias{create_workspace}
-\title{Creates a new workspace}
+\title{Create a new workspace.}
 \usage{
 create_workspace(gf, name, description = NULL)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{name}{workspace name}
+\item{name}{Human-readable workspace name.}
 
-\item{description}{workspace description}
+\item{description}{Optional longer description of the workspace.}
 }
 \value{
-created workspace object
+The created workspace object as returned by the API.
 }
 \description{
-Creates a new workspace
+Workspaces are top-level containers for analyses and figures. This helper
+creates a new workspace owned by the current user.
 }

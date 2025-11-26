@@ -2,16 +2,16 @@
 % Please edit documentation in R/workspace.R
 \name{list_workspaces}
 \alias{list_workspaces}
-\title{List all workspaces available to the user.}
+\title{List all workspaces available to the authenticated user.}
 \usage{
 list_workspaces(gf)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 }
 \value{
-List of workspaces
+A list of workspace objects visible to the current user.
 }
 \description{
-List all workspaces available to the user.
+List all workspaces available to the authenticated user.
 }

@@ -10,8 +10,16 @@ response_to_JSON(response)
 \item{response}{httr response}
 }
 \value{
-parsed JSON
+parsed JSON where JSON objects are represented as environments and
+  JSON arrays as R lists.
 }
 \description{
-Convenience function for parsing JSON from httr responses
+By default, `jsonlite::fromJSON` returns nested named lists. For mutable
+objects that we want to update in-place (e.g. adding `figures` to an
+`analysis`), it's more convenient to work with environments, since they are
+passed by reference.
+}
+\details{
+This helper converts named lists to environments recursively, while keeping
+unnamed lists (arrays) as lists of elements. Atomic values are returned as-is.
 }

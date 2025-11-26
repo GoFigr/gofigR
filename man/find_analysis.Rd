@@ -2,24 +2,30 @@
 % Please edit documentation in R/analysis.R
 \name{find_analysis}
 \alias{find_analysis}
-\title{Finds an analysis by name, optionally creating one if it doesn't exist.}
+\title{Find an analysis by name, optionally creating it.}
 \usage{
 find_analysis(gf, name, description = NULL, workspace = NULL, create = FALSE)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{name}{name of the analysis to find}
+\item{name}{Name of the analysis to find.}
 
-\item{description}{description of the analysis if it needs to be created}
+\item{description}{Optional description to assign if a new analysis is
+created.}
 
-\item{workspace}{parent workspace}
+\item{workspace}{Parent workspace (object or API ID). If `NULL`, the
+client's default workspace is used.}
 
-\item{create}{if TRUE and the analysis doesn't exist, it will be created; throws an error otherwise.}
+\item{create}{Logical; if `TRUE` and the analysis does not exist, a new one
+is created. If `FALSE`, an error is thrown when no matching analysis is
+found.}
 }
 \value{
-analysis object
+An analysis object corresponding to the matching (or newly created)
+  analysis.
 }
 \description{
-Finds an analysis by name, optionally creating one if it doesn't exist.
+Searches the analyses within a workspace by name and, optionally, creates a
+new analysis when no match is found.
 }

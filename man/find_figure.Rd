@@ -2,24 +2,31 @@
 % Please edit documentation in R/figure.R
 \name{find_figure}
 \alias{find_figure}
-\title{Finds a figure by name}
+\title{Find a figure by name within an analysis.}
 \usage{
 find_figure(gf, analysis, name, description = NULL, create = FALSE)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{analysis}{parent analysis}
+\item{analysis}{Parent analysis object (or environment) in which to look
+for the figure.}
 
-\item{name}{name of the figure to find}
+\item{name}{Name of the figure to find.}
 
-\item{description}{description of the figure if it needs to be created}
+\item{description}{Optional description to use if a new figure must be
+created.}
 
-\item{create}{if TRUE and the figure doesn't exist, it will be created; throws an error otherwise.}
+\item{create}{Logical; if `TRUE` and the figure doesn't exist, a new one
+is created. If `FALSE`, an error is thrown when no matching figure is
+found.}
 }
 \value{
-figure object
+A figure object corresponding to the matching (or newly created)
+  figure.
 }
 \description{
-Finds a figure by name
+Searches the figures attached to a given analysis by name and optionally
+creates a new figure when no match is found. This is often the most
+convenient way to obtain a figure handle in scripts and notebooks.
 }

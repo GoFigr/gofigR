@@ -2,18 +2,19 @@
 % Please edit documentation in R/analysis.R
 \name{delete_analysis}
 \alias{delete_analysis}
-\title{Deletes an analysis given an API ID.}
+\title{Delete an analysis by API ID.}
 \usage{
 delete_analysis(gf, api_id)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{api_id}{API ID for the analysis}
+\item{api_id}{Character string with the API ID of the analysis to delete.}
 }
 \value{
-server response
+Invisibly returns `NULL`. An error is thrown if the deletion fails.
 }
 \description{
-Deletes an analysis given an API ID.
+This permanently removes the analysis and its associated figures and
+revisions from the workspace.
 }
