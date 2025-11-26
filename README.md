@@ -148,3 +148,26 @@ Note that we pass `input` to `gfPlotServer`. This will capture your current Shin
 ## Interactive use
 
 We support `knitr` as well as interactive sessions in `RStudio`.
+
+## Common issues
+
+### Heatmap functions that draw and return an object (e.g. `pheatmap`)
+
+Some plotting functions in R both **draw to the active graphics device** and **return an object**. A common example is `pheatmap::pheatmap()`, which immediately draws the heatmap and also returns a `"pheatmap"` object.
+
+If you use this pattern in an R Markdown document:
+
+```r
+pheatmap::pheatmap(mat) %>% publish("My heatmap")
+```
+
+the heatmap is first drawn by `pheatmap()` (captured by `knitr` as a regular, non‑GoFigr figure) and then drawn again by `publish()` (captured with the GoFigr watermark/QR code). This can make the same heatmap appear twice in your output.
+
+To avoid duplication with `pheatmap`, ask it to return the plot object without drawing, and then pass that object to `publish()`:
+
+```r
+hm <- pheatmap::pheatmap(mat, silent = TRUE)  # returns a pheatmap object without drawing
+publish(hm, "My heatmap")
+```
+
+This way, only the GoFigr-rendered, watermarked version of the heatmap is shown.

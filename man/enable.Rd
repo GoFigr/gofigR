@@ -9,12 +9,16 @@ enable(
   analysis_api_id = NULL,
   analysis_name = NULL,
   workspace = NULL,
+  workspace_name = NULL,
   create_analysis = TRUE,
+  create_workspace = TRUE,
   analysis_description = NULL,
+  workspace_description = NULL,
   watermark = QR_WATERMARK,
   verbose = FALSE,
   debug = FALSE,
   api_key = NULL,
+  url = NULL,
   show = "watermark"
 )
 }
@@ -28,9 +32,15 @@ that setting this option will re-assign plot() and print() in the global environ
 
 \item{workspace}{API ID of the workspace}
 
+\item{workspace_name}{Workspace name (if workspace is NULL)}
+
 \item{create_analysis}{if TRUE and analysis_name does not exist, it will be automatically created}
 
+\item{create_workspace}{if TRUE and workspace_name does not exist, it will be automatically created}
+
 \item{analysis_description}{analysis description if creating a new analysis}
+
+\item{workspace_description}{workspace description if creating a new workspace}
 
 \item{watermark}{watermark class to use, e.g. QR_WATERMARK, LINK_WATERMARK or NO_WATERMARK}
 
@@ -39,6 +49,8 @@ that setting this option will re-assign plot() and print() in the global environ
 \item{debug}{whether to show debugging information}
 
 \item{api_key}{GoFigr API key}
+
+\item{url}{GoFigr API URL}
 
 \item{show}{which figure to display in the document: original, watermark, or hide. Note that this setting \
 only affects the display and doesn't change what gets published: e.g. even if you choose to display \

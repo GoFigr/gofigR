@@ -2,22 +2,20 @@
 % Please edit documentation in R/workspace.R
 \name{infer_workspace}
 \alias{infer_workspace}
-\title{Returns the argument if a valid workspace is passed, or the default
-workspace from the GoFigr client otherwise. Throws an error if both
-are NULL.}
+\title{Resolve the workspace argument, falling back to the client's default.}
 \usage{
 infer_workspace(gf, workspace)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{workspace}{workspace or NULL}
+\item{workspace}{Optional workspace object or API ID. If `NULL`, the
+client's default workspace is used.}
 }
 \value{
-workspace object
+A workspace object or API ID suitable for passing to other helpers.
 }
 \description{
-Returns the argument if a valid workspace is passed, or the default
-workspace from the GoFigr client otherwise. Throws an error if both
-are NULL.
+Returns the supplied workspace if present, otherwise the default workspace
+configured on the GoFigr client. Throws an error if neither is available.
 }

@@ -1,31 +1,35 @@
-#' Retrieves workspace details.
+#' Retrieve workspace details.
 #'
-#' @param gf GoFigr client
-#' @param api_id API ID of the workspace
+#' @param gf GoFigr client created by `gofigr_client()`.
+#' @param api_id Character string with the API ID of the workspace to fetch.
 #'
-#' @return workspace details
+#' @return A workspace object as returned by the API, including metadata and
+#'   lists of analyses and members.
 #' @export
 get_workspace <- function(gf, api_id) {
-  response_to_JSON(gofigr_GET(gf, paste0("workspace/", api_id)))
+  response_to_JSON(gofigr_GET(gf, paste0("workspace/", api_id, "/")))
 }
 
-#' List all workspaces available to the user.
+#' List all workspaces available to the authenticated user.
 #'
-#' @param gf GoFigr client
+#' @param gf GoFigr client.
 #'
-#' @return List of workspaces
+#' @return A list of workspace objects visible to the current user.
 #' @export
 list_workspaces <- function(gf) {
   response_to_JSON(gofigr_GET(gf, "workspace/"))
 }
 
-#' Creates a new workspace
+#' Create a new workspace.
 #'
-#' @param gf GoFigr client
-#' @param name workspace name
-#' @param description workspace description
+#' Workspaces are top-level containers for analyses and figures. This helper
+#' creates a new workspace owned by the current user.
 #'
-#' @return created workspace object
+#' @param gf GoFigr client.
+#' @param name Human-readable workspace name.
+#' @param description Optional longer description of the workspace.
+#'
+#' @return The created workspace object as returned by the API.
 #' @export
 create_workspace <- function(gf, name, description=NULL) {
   response_to_JSON(gofigr_POST(gf, "workspace/",
@@ -35,14 +39,21 @@ create_workspace <- function(gf, name, description=NULL) {
                                expected_status_code = 201))
 }
 
-#' Finds a workspace by name, optionally creating it if doesn't exist
+#' Find a workspace by name, optionally creating it.
 #'
-#' @param gf GoFigr client
-#' @param name name of the workspace to find
-#' @param description workspace description if creating a new one
-#' @param create if TRUE and workspace is not found, it will be created
+#' Searches the workspaces visible to the current user by name and, optionally,
+#' creates a new workspace when no match is found.
 #'
-#' @return workspace if found; throws an error if not.
+#' @param gf GoFigr client.
+#' @param name Name of the workspace to find.
+#' @param description Optional description to use if a new workspace is
+#'   created.
+#' @param create Logical; if `TRUE` and the workspace does not exist, a new
+#'   one is created. If `FALSE`, an error is thrown when no matching workspace
+#'   is found.
+#'
+#' @return A workspace object corresponding to the matching (or newly created)
+#'   workspace.
 #' @export
 find_workspace <- function(gf, name, description=NULL, create=FALSE) {
   find_or_create(gf, name, create=create,
@@ -54,14 +65,16 @@ find_workspace <- function(gf, name, description=NULL, create=FALSE) {
 }
 
 
-#' Returns the argument if a valid workspace is passed, or the default
-#' workspace from the GoFigr client otherwise. Throws an error if both
-#' are NULL.
+#' Resolve the workspace argument, falling back to the client's default.
 #'
-#' @param gf GoFigr client
-#' @param workspace workspace or NULL
+#' Returns the supplied workspace if present, otherwise the default workspace
+#' configured on the GoFigr client. Throws an error if neither is available.
 #'
-#' @return workspace object
+#' @param gf GoFigr client.
+#' @param workspace Optional workspace object or API ID. If `NULL`, the
+#'   client's default workspace is used.
+#'
+#' @return A workspace object or API ID suitable for passing to other helpers.
 #' @export
 infer_workspace <- function(gf, workspace) {
   if(!is.null(workspace)) {

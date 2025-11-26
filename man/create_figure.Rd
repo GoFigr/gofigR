@@ -2,24 +2,25 @@
 % Please edit documentation in R/figure.R
 \name{create_figure}
 \alias{create_figure}
-\title{Creates a new figure. The created figure will be blank and won't contain
-any revisions.}
+\title{Create a new figure under an analysis.}
 \usage{
 create_figure(gf, analysis, name, description = NULL)
 }
 \arguments{
-\item{gf}{GoFigr object}
+\item{gf}{GoFigr client.}
 
-\item{analysis}{analysis under which to create the figure}
+\item{analysis}{Parent analysis under which to create the figure. Can be
+an analysis object or an API ID.}
 
-\item{name}{name for the new figure}
+\item{name}{Human-readable name for the new figure.}
 
-\item{description}{description for the new figure}
+\item{description}{Optional longer description of the figure's purpose or
+contents.}
 }
 \value{
-created figure object
+The created figure object as returned by the API.
 }
 \description{
-Creates a new figure. The created figure will be blank and won't contain
-any revisions.
+The newly created figure is initially blank and contains no revisions. Use
+the revision helpers to attach content once the figure has been created.
 }

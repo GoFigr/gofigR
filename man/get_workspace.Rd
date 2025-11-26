@@ -2,18 +2,19 @@
 % Please edit documentation in R/workspace.R
 \name{get_workspace}
 \alias{get_workspace}
-\title{Retrieves workspace details.}
+\title{Retrieve workspace details.}
 \usage{
 get_workspace(gf, api_id)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client created by `gofigr_client()`.}
 
-\item{api_id}{API ID of the workspace}
+\item{api_id}{Character string with the API ID of the workspace to fetch.}
 }
 \value{
-workspace details
+A workspace object as returned by the API, including metadata and
+  lists of analyses and members.
 }
 \description{
-Retrieves workspace details.
+Retrieve workspace details.
 }

@@ -246,14 +246,47 @@ is_expired_token <- function(res) {
 
 #' Convenience function for parsing JSON from httr responses
 #'
+#' By default, `jsonlite::fromJSON` returns nested named lists. For mutable
+#' objects that we want to update in-place (e.g. adding `figures` to an
+#' `analysis`), it's more convenient to work with environments, since they are
+#' passed by reference.
+#'
+#' This helper converts named lists to environments recursively, while keeping
+#' unnamed lists (arrays) as lists of elements. Atomic values are returned as-is.
+#'
 #' @param response httr response
 #'
-#' @return parsed JSON
+#' @return parsed JSON where JSON objects are represented as environments and
+#'   JSON arrays as R lists.
 response_to_JSON <- function(response) {
-  return(jsonlite::fromJSON(rawToChar(response$content),
-                            simplifyDataFrame = FALSE,
-                            simplifyMatrix = FALSE,
-                            simplifyVector = FALSE))
+  list_to_env_recursive <- function(x) {
+    if (is.list(x)) {
+      nms <- names(x)
+
+      # Unnamed list: treat as an array/collection and keep as list
+      if (is.null(nms) || !any(nzchar(nms))) {
+        return(lapply(x, list_to_env_recursive))
+      }
+
+      # Named list: treat as an object and convert to environment
+      env <- new.env(parent = emptyenv())
+      for (nm in nms) {
+        if (!nzchar(nm)) next
+        env[[nm]] <- list_to_env_recursive(x[[nm]])
+      }
+      return(env)
+    }
+
+    # Atomic vectors or other types are returned unchanged
+    x
+  }
+
+  parsed <- jsonlite::fromJSON(rawToChar(response$content),
+                               simplifyDataFrame = FALSE,
+                               simplifyMatrix = FALSE,
+                               simplifyVector = FALSE)
+
+  list_to_env_recursive(parsed)
 }
 
 #' Wraps an HTTR method e.g. GET to provide relative URL resolution and
@@ -399,7 +432,7 @@ create_api_key <- function(gf, name) {
 get_api_id <- function(obj) {
   if(is.character(obj)) {
     return(obj)
-  } else if(is.list(obj)) {
+  } else if(is.list(obj) || is.environment(obj)) {
     return(obj$api_id)
   } else {
     stop(paste0("Unable to obtain API ID for object ", obj))

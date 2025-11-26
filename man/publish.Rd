@@ -14,7 +14,11 @@ publish(
   data = NULL,
   metadata = NULL,
   show = TRUE,
-  base_convert = TRUE
+  base_convert = TRUE,
+  width = NULL,
+  height = NULL,
+  units = "in",
+  dpi = NULL
 )
 }
 \arguments{
@@ -37,6 +41,14 @@ publish(
 \item{show}{whether to display the figure after publication}
 
 \item{base_convert}{whether to try converting base graphics to grid graphics}
+
+\item{width}{width of the output image. If NULL, uses current device dimensions.}
+
+\item{height}{height of the output image. If NULL, uses current device dimensions.}
+
+\item{units}{units for width and height. Default is "in" (inches). Other options include "cm", "mm", "px".}
+
+\item{dpi}{resolution of the output image. If NULL, uses ggsave default (300).}
 }
 \value{
 GoFigr revision object

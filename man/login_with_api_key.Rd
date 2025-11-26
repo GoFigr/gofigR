@@ -2,18 +2,22 @@
 % Please edit documentation in R/gfconfig.R
 \name{login_with_api_key}
 \alias{login_with_api_key}
-\title{Prompts the user for an API key or creates a new one}
+\title{Prompts the user for an API key or interactively creates a new one.}
 \usage{
 login_with_api_key(gf, max_attempts)
 }
 \arguments{
-\item{gf}{Password-authenticated GoFigr client}
+\item{gf}{Password-authenticated GoFigr client created by `gofigr_client()`.}
 
-\item{max_attempts}{Maximum number of login attempts before giving up}
+\item{max_attempts}{Maximum number of attempts when validating a user-
+supplied API key.}
 }
 \value{
-API key, either supplied by the user or newly created
+A character string containing a valid API key, either supplied
+  by the user or newly created.
 }
 \description{
-Prompts the user for an API key or creates a new one
+Given a password-authenticated GoFigr client, this helper either accepts an
+existing API key entered by the user or creates a new API key via the API.
+The newly created key is associated with the authenticated user.
 }

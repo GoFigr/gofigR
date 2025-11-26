@@ -213,12 +213,14 @@ create_bare_revision <- function(client, fig, input_path, metadata) {
 }
 
 
-apply_watermark <- function(rev_bare, plot_obj, gf_opts) {
+apply_watermark <- function(rev_bare, plot_obj, gf_opts, width=NULL, height=NULL, units="in", dpi=NULL) {
   if(!is.null(gf_opts$watermark)) {
     watermarked_path <- tempfile(fileext=".png")
     qr <- gf_opts$watermark(rev_bare, NULL)
     p <- ggwatermark(qr, plot_obj)
-    suppressMessages(ggplot2::ggsave(watermarked_path, plot=p))
+
+    ggsave_args <- create_ggsave_args(watermarked_path, p, width, height, units, dpi)
+    suppressMessages(do.call(ggplot2::ggsave, ggsave_args))
 
     return(list(data_object=list(make_image_data("figure", watermarked_path, "png", TRUE)),
                 png_path=watermarked_path))
@@ -272,15 +274,48 @@ annotate <- function(rev_bare, plot_obj, figure_name,
 }
 
 
-save_as_image_file <- function(format, plot_obj) {
+#' Creates a list of arguments for ggplot2::ggsave() with optional dimension and DPI parameters.
+#'
+#' @param filename output filename
+#' @param plot plot object
+#' @param width width of the output image. If NULL, not included in arguments.
+#' @param height height of the output image. If NULL, not included in arguments.
+#' @param units units for width and height. If NULL, not included in arguments.
+#' @param dpi resolution of the output image. If NULL, not included in arguments.
+#'
+#' @return list of arguments suitable for do.call(ggplot2::ggsave, ...)
+create_ggsave_args <- function(filename, plot, width=NULL, height=NULL, units="in", dpi=NULL) {
+  ggsave_args <- list(filename=filename, plot=plot)
+
+  # Add dimension parameters if provided
+  if(!is.null(width)) {
+    ggsave_args$width <- width
+  }
+  if(!is.null(height)) {
+    ggsave_args$height <- height
+  }
+  if(!is.null(width) || !is.null(height)) {
+    ggsave_args$units <- units
+  }
+  if(!is.null(dpi)) {
+    ggsave_args$dpi <- dpi
+  }
+
+  return(ggsave_args)
+}
+
+
+save_as_image_file <- function(format, plot_obj, width=NULL, height=NULL, units="in", dpi=NULL) {
   path <- tempfile(fileext=paste0(".", format))
   p <- cowplot::ggdraw() + cowplot::draw_plot(plot_obj)
-  suppressMessages(ggplot2::ggsave(path, plot=p))
+
+  ggsave_args <- create_ggsave_args(path, p, width, height, units, dpi)
+  suppressMessages(do.call(ggplot2::ggsave, ggsave_args))
   return(path)
 }
 
-save_as_image <- function(format, plot_obj) {
-  path <- save_as_image_file(format, plot_obj)
+save_as_image <- function(format, plot_obj, width=NULL, height=NULL, units="in", dpi=NULL) {
+  path <- save_as_image_file(format, plot_obj, width, height, units, dpi)
   img_obj <- make_image_data("figure", path, format, FALSE)
   file.remove(path)
   return(img_obj)
@@ -403,6 +438,10 @@ publish_base <- function(expr, ...) {
 #' @param metadata optional metadata
 #' @param show whether to display the figure after publication
 #' @param base_convert whether to try converting base graphics to grid graphics
+#' @param width width of the output image. If NULL, uses current device dimensions.
+#' @param height height of the output image. If NULL, uses current device dimensions.
+#' @param units units for width and height. Default is "in" (inches). Other options include "cm", "mm", "px".
+#' @param dpi resolution of the output image. If NULL, uses ggsave default (300).
 #'
 #' @returns GoFigr revision object
 #' @export
@@ -415,7 +454,11 @@ publish <- function(plot_obj,
                     data=NULL,
                     metadata=NULL,
                     show=TRUE,
-                    base_convert=TRUE) {
+                    base_convert=TRUE,
+                    width=NULL,
+                    height=NULL,
+                    units="in",
+                    dpi=NULL) {
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
     warning("GoFigr hasn't been configured. Did you call gofigR::enable()?")
@@ -456,7 +499,7 @@ publish <- function(plot_obj,
 
   client <- gf_opts$client
 
-  png_path <- save_as_image_file("png", plot_obj)
+  png_path <- save_as_image_file("png", plot_obj, width, height, units, dpi)
   if(!file.exists(png_path)) {
     if(gf_opts$verbose) {
       warning("No output to publish\n")
@@ -471,14 +514,14 @@ publish <- function(plot_obj,
 
   # Now that we have an API ID, apply the watermark
   image_data <- list(make_image_data("figure", png_path, "png", FALSE))
-  watermark_data <- apply_watermark(rev_bare, plot_obj, gf_opts)
+  watermark_data <- apply_watermark(rev_bare, plot_obj, gf_opts, width, height, units, dpi)
   if(!is.null(watermark_data)) {
     image_data <- append(image_data, watermark_data$data_object)
   }
 
   # Additional image formats
   image_data <- append(image_data, lapply(image_formats, function(fmt) {
-    save_as_image(fmt, plot_obj)
+    save_as_image(fmt, plot_obj, width, height, units, dpi)
   }))
   image_data <- image_data[!is.null(image_data)]
 
@@ -684,8 +727,11 @@ read.xlsx <- wrap_reader(openxlsx::read.xlsx)
 #' @param analysis_api_id Analysis API ID (if analysis_name is NULL)
 #' @param analysis_name Analysis name (if analysis_api_id is NULL)
 #' @param workspace API ID of the workspace
+#' @param workspace_name Workspace name (if workspace is NULL)
 #' @param create_analysis if TRUE and analysis_name does not exist, it will be automatically created
+#' @param create_workspace if TRUE and workspace_name does not exist, it will be automatically created
 #' @param analysis_description analysis description if creating a new analysis
+#' @param workspace_description workspace description if creating a new workspace
 #' @param watermark watermark class to use, e.g. QR_WATERMARK, LINK_WATERMARK or NO_WATERMARK
 #' @param verbose whether to show verbose output
 #' @param debug whether to show debugging information
@@ -693,6 +739,7 @@ read.xlsx <- wrap_reader(openxlsx::read.xlsx)
 #' only affects the display and doesn't change what gets published: e.g. even if you choose to display \
 #' the original figure, the watermarked version will still be published to GoFigr.
 #' @param api_key GoFigr API key
+#' @param url GoFigr API URL
 #'
 #' @return named list of GoFigr options
 #' @export
@@ -700,12 +747,16 @@ enable <- function(auto_publish=FALSE,
                    analysis_api_id=NULL,
                    analysis_name=NULL,
                    workspace=NULL,
+                   workspace_name=NULL,
                    create_analysis=TRUE,
+                   create_workspace=TRUE,
                    analysis_description=NULL,
+                   workspace_description=NULL,
                    watermark=QR_WATERMARK,
                    verbose=FALSE,
                    debug=FALSE,
                    api_key=NULL,
+                   url=NULL,
                    show="watermark") {
   check_show_setting(show)
 
@@ -718,7 +769,21 @@ enable <- function(auto_publish=FALSE,
   # Create the GoFigr client
   gf <- gofigr_client(workspace = workspace,
                       verbose = verbose,
-                      api_key = api_key)
+                      api_key = api_key,
+                      url = url)
+
+  # Find the workspace
+  if(!is.null(workspace)) {
+    worx <- gofigR::get_workspace(gf, workspace) # confirm it exists
+    gf$workspace <- worx$api_id
+  } else if(!is.null(workspace_name)) {
+    worx <- gofigR::find_workspace(gf, workspace_name,
+                                   description = workspace_description,
+                                   create = create_workspace)
+    gf$workspace <- worx$api_id
+  } else if(is.null(gf$workspace)) {
+    stop("Please specify either workspace (API ID), or workspace_name")
+  }
 
   # Find the analysis
   if(!is.null(analysis_api_id)) {

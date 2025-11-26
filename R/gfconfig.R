@@ -1,11 +1,20 @@
-#' Reads a prompt from stdin and performs optional validation
+#' Reads a line from stdin with optional validation and retry logic.
 #'
-#' @param prompt prompt, e.g. "Enter username: "
-#' @param validate function input => transformed input if input is valid or, error
-#' @param attempt current attempt at getting a valid input
-#' @param max_attempts maximum number of attempts
+#' This is a small helper used by the GoFigr configuration wizard to collect
+#' user input interactively. When a validation function is supplied, the input
+#' will be repeatedly requested until it passes validation or the maximum
+#' number of attempts is reached.
 #'
-#' @return input, or result of validate(input) if validate is supplied
+#' @param prompt Character string shown to the user, e.g. "Enter username: ".
+#' @param validate Optional function taking a single character argument and
+#'   either returning a transformed value or throwing an error if the value
+#'   is invalid.
+#' @param attempt Current attempt number (used internally for recursion).
+#' @param max_attempts Maximum number of attempts before giving up and
+#'   throwing an error.
+#'
+#' @return The raw input string, or the result of `validate(input)` if
+#'   a validation function is supplied.
 read_prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
   if(attempt > max_attempts) {
     stop(paste0("Failed after ", max_attempts, " attempts"))
@@ -24,11 +33,16 @@ read_prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
   }
 }
 
-#' Prompts the user for username & password and logs into GoFigr
+#' Prompts the user for username and password and logs into GoFigr.
 #'
-#' @param max_attempts maximum number of login attempts before giving up
+#' This function interactively requests credentials, attempts authentication
+#' against the GoFigr API, and retries a limited number of times on failure.
+#' It is primarily used by `gfconfig()` and is not intended for scripted use.
 #'
-#' @return GoFigr client
+#' @param max_attempts Maximum number of login attempts before giving up.
+#'
+#' @return A configured GoFigr client object authenticated with username
+#'   and password.
 login_with_username <- function(max_attempts) {
   connection_ok <- FALSE
   attempt <- 0
@@ -64,12 +78,18 @@ login_with_username <- function(max_attempts) {
   return(gf)
 }
 
-#' Prompts the user for an API key or creates a new one
+#' Prompts the user for an API key or interactively creates a new one.
 #'
-#' @param gf Password-authenticated GoFigr client
-#' @param max_attempts Maximum number of login attempts before giving up
+#' Given a password-authenticated GoFigr client, this helper either accepts an
+#' existing API key entered by the user or creates a new API key via the API.
+#' The newly created key is associated with the authenticated user.
 #'
-#' @return API key, either supplied by the user or newly created
+#' @param gf Password-authenticated GoFigr client created by `gofigr_client()`.
+#' @param max_attempts Maximum number of attempts when validating a user-
+#'   supplied API key.
+#'
+#' @return A character string containing a valid API key, either supplied
+#'   by the user or newly created.
 login_with_api_key <- function(gf, max_attempts) {
   api_key <- read_prompt("API key (leave blank to generate a new one): ",
                          validate=function(api_key) {
@@ -100,12 +120,18 @@ login_with_api_key <- function(gf, max_attempts) {
   return(created_key$token)
 }
 
-#' Configures gofigr for use on this machine. Saves configuration
-#' to ~/.gofigr.
+#' Interactive configuration helper for the GoFigr R client.
 #'
-#' @param max_attempts Maximum number of password attempts
+#' Runs a simple text-based wizard that logs into GoFigr, generates or verifies
+#' an API key, lets the user choose a default workspace, and then writes a
+#' configuration file to `~/.gofigr`. This configuration is used by
+#' `gofigr_client()` when explicit credentials are not provided.
 #'
-#' @return No return value
+#' @param max_attempts Maximum number of password/API key attempts before
+#'   the wizard aborts with an error.
+#'
+#' @return Invisibly returns `NULL`. The main effect is writing configuration
+#'   to disk and printing progress messages.
 #' @export
 gfconfig <- function(max_attempts=3) {
   message("-------------------------------------------------------------------\n")

@@ -2,18 +2,21 @@
 % Please edit documentation in R/gfconfig.R
 \name{gfconfig}
 \alias{gfconfig}
-\title{Configures gofigr for use on this machine. Saves configuration
-to ~/.gofigr.}
+\title{Interactive configuration helper for the GoFigr R client.}
 \usage{
 gfconfig(max_attempts = 3)
 }
 \arguments{
-\item{max_attempts}{Maximum number of password attempts}
+\item{max_attempts}{Maximum number of password/API key attempts before
+the wizard aborts with an error.}
 }
 \value{
-No return value
+Invisibly returns `NULL`. The main effect is writing configuration
+  to disk and printing progress messages.
 }
 \description{
-Configures gofigr for use on this machine. Saves configuration
-to ~/.gofigr.
+Runs a simple text-based wizard that logs into GoFigr, generates or verifies
+an API key, lets the user choose a default workspace, and then writes a
+configuration file to `~/.gofigr`. This configuration is used by
+`gofigr_client()` when explicit credentials are not provided.
 }

@@ -2,18 +2,18 @@
 % Please edit documentation in R/analysis.R
 \name{get_analysis}
 \alias{get_analysis}
-\title{Fetches an analysis given an API ID.}
+\title{Fetch an analysis by API ID.}
 \usage{
 get_analysis(gf, api_id)
 }
 \arguments{
-\item{gf}{GoFigr client}
+\item{gf}{GoFigr client.}
 
-\item{api_id}{API ID for the analysis}
+\item{api_id}{Character string with the API ID of the analysis to fetch.}
 }
 \value{
-analysis object
+An analysis object as returned by the API.
 }
 \description{
-Fetches an analysis given an API ID.
+Fetch an analysis by API ID.
 }
