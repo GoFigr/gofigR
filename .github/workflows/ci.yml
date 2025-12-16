@@ -19,6 +19,18 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: '4.3'
+          use-public-rspm: true
+
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.R/library
+            ~/.R/Microsoft*
+            ~/.R/renv
+          key: ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}
+          restore-keys: |
+            ${{ runner.os }}-r-
 
       - name: Install system dependencies
         run: |
@@ -42,14 +54,16 @@ jobs:
             libgeos-dev \
             libproj-dev
 
-      - name: Install R dependencies (using binary packages)
+      - name: Install R dependencies
         run: |
-          # Use Posit Package Manager for binary packages (much faster than building from source)
-          # This will use binaries when available, fallback to source if needed
-          R -e "options(repos = c(PPM = 'https://packagemanager.posit.co/cran/__linux__/jammy/latest', CRAN = 'https://cloud.r-project.org'))"
-          R -e "install.packages(c('remotes', 'roxygen2', 'devtools', 'testthat'), repos = getOption('repos'), INSTALL_opts = '--no-lock')"
-          # remotes::install_deps will use the repos from options() which prefers PPM binaries
-          R -e "remotes::install_deps(dependencies = TRUE, repos = getOption('repos'), INSTALL_opts = '--no-lock')"
+          # RSPM is configured via use-public-rspm: true in setup-r
+          # Use parallel compilation and show only last 50 lines of output to reduce log size
+          Rscript -e "options(Ncpus = parallel::detectCores())" \
+            -e "install.packages(c('remotes', 'roxygen2', 'devtools', 'testthat'), repos = getOption('repos'), quiet = TRUE, Ncpus = parallel::detectCores())" \
+            2>&1 | tail -50
+          Rscript -e "options(Ncpus = parallel::detectCores())" \
+            -e "remotes::install_deps(dependencies = TRUE, repos = getOption('repos'), quiet = TRUE, upgrade = 'never', Ncpus = parallel::detectCores())" \
+            2>&1 | tail -50
 
       - name: Build package (Step 1)
         run: |
