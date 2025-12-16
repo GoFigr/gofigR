@@ -30,12 +30,26 @@ jobs:
             libpng-dev \
             libjpeg-dev \
             librsvg2-dev \
-            libmagick++-dev
+            libmagick++-dev \
+            libv8-dev \
+            libharfbuzz-dev \
+            libfribidi-dev \
+            libfreetype6-dev \
+            libfontconfig1-dev \
+            libicu-dev \
+            libcairo2-dev \
+            libudunits2-dev \
+            libgeos-dev \
+            libproj-dev
 
-      - name: Install R dependencies
+      - name: Install R dependencies (using binary packages)
         run: |
-          R -e "install.packages(c('remotes', 'roxygen2', 'devtools', 'testthat'), repos = 'https://cloud.r-project.org')"
-          R -e "remotes::install_deps(dependencies = TRUE, repos = 'https://cloud.r-project.org')"
+          # Use Posit Package Manager for binary packages (much faster than building from source)
+          # This will use binaries when available, fallback to source if needed
+          R -e "options(repos = c(PPM = 'https://packagemanager.posit.co/cran/__linux__/jammy/latest', CRAN = 'https://cloud.r-project.org'))"
+          R -e "install.packages(c('remotes', 'roxygen2', 'devtools', 'testthat'), repos = getOption('repos'), INSTALL_opts = '--no-lock')"
+          # remotes::install_deps will use the repos from options() which prefers PPM binaries
+          R -e "remotes::install_deps(dependencies = TRUE, repos = getOption('repos'), INSTALL_opts = '--no-lock')"
 
       - name: Build package (Step 1)
         run: |
