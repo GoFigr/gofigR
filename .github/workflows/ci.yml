@@ -52,7 +52,9 @@ jobs:
             libcairo2-dev \
             libudunits2-dev \
             libgeos-dev \
-            libproj-dev
+            libproj-dev \
+            texlive-latex-base \
+            texlive-fonts-recommended
 
       - name: Install R dependencies
         run: |
@@ -61,8 +63,9 @@ jobs:
           Rscript -e "options(Ncpus = parallel::detectCores())" \
             -e "install.packages(c('remotes', 'roxygen2', 'devtools', 'testthat'), repos = getOption('repos'), quiet = TRUE, Ncpus = parallel::detectCores())" \
             2>&1 | tail -50
+          # Install all dependencies including Suggests (needed for tests, e.g. torchvision)
           Rscript -e "options(Ncpus = parallel::detectCores())" \
-            -e "remotes::install_deps(dependencies = TRUE, repos = getOption('repos'), quiet = TRUE, upgrade = 'never', Ncpus = parallel::detectCores())" \
+            -e "remotes::install_deps(dependencies = c('Depends', 'Imports', 'LinkingTo', 'Suggests'), repos = getOption('repos'), quiet = TRUE, upgrade = 'never', Ncpus = parallel::detectCores())" \
             2>&1 | tail -50
 
       - name: Build package (Step 1)
