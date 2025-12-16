@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libxml2-dev \
+            libpng-dev \
+            libjpeg-dev \
+            librsvg2-dev \
+            libmagick++-dev
+
+      - name: Install R dependencies
+        run: |
+          R -e "install.packages(c('remotes', 'roxygen2', 'devtools', 'testthat'), repos = 'https://cloud.r-project.org')"
+          R -e "remotes::install_deps(dependencies = TRUE, repos = 'https://cloud.r-project.org')"
+
+      - name: Build package (Step 1)
+        run: |
+          bash ./build.sh
+
+      - name: Test (Step 2)
+        run: |
+          bash run_tests.sh
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: gofigR*.tar.gz
+          retention-days: 7
+
