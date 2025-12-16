@@ -10,16 +10,19 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    container:
+      # Use Rocker verse image with R 4.3, LaTeX, and many system dependencies pre-installed
+      # This avoids having to install all the system libraries separately
+      image: rocker/verse:4.3
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: '4.3'
-          use-public-rspm: true
+      - name: Configure R repositories
+        run: |
+          # Use public RSPM for binary packages
+          echo 'options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' >> ~/.Rprofile
 
       - name: Cache R packages
         uses: actions/cache@v4
@@ -32,33 +35,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-r-
 
-      - name: Install system dependencies
+      - name: Install missing system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libcurl4-openssl-dev \
-            libssl-dev \
-            libxml2-dev \
-            libpng-dev \
-            libjpeg-dev \
-            librsvg2-dev \
-            libmagick++-dev \
+          # Rocker verse already has most dependencies, install any missing ones
+          apt-get update -qq && apt-get install -y -qq \
             libv8-dev \
             libharfbuzz-dev \
-            libfribidi-dev \
-            libfreetype6-dev \
-            libfontconfig1-dev \
-            libicu-dev \
-            libcairo2-dev \
-            libudunits2-dev \
-            libgeos-dev \
-            libproj-dev \
-            texlive-latex-base \
-            texlive-fonts-recommended
+            libfribidi-dev || true
 
       - name: Install R dependencies
         run: |
-          # RSPM is configured via use-public-rspm: true in setup-r
           # Use parallel compilation and show only last 50 lines of output to reduce log size
           Rscript -e "options(Ncpus = parallel::detectCores())" \
             -e "install.packages(c('remotes', 'roxygen2', 'devtools', 'testthat'), repos = getOption('repos'), quiet = TRUE, Ncpus = parallel::detectCores())" \
