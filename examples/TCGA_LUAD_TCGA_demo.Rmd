@@ -1,0 +1,594 @@
+---
+title: "TCGA-LUAD: Exploratory Analysis with gofigR"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(gofigR)
+library(SummarizedExperiment)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(stringr)
+library(gridExtra)
+library(ggplotify)
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# Enable gofigR for this analysis. You can optionally pass an explicit analysis name.
+gofigR::enable(TRUE, analysis_name = "TCGA-LUAD demo",
+               api_url="http://localhost:8000",
+               api_key="57175fb3b927d862adf1d2f058dabe64fd970aa228695381618354bd58eb8bb3")
+```
+
+## Introduction
+
+This document demonstrates how to use **gofigR** with a TCGA LUAD (lung adenocarcinoma) subset stored as a `SummarizedExperiment`.
+We will:
+
+- **Enable gofigR** and configure the session.
+- **Load the LUAD expression dataset** from `TCGA-LUAD_TPM_SE_subset.rds`.
+- **Tabulate patient demographics** and publish the table as a figure to GoFigr.
+- **Run basic QC on genes** (mean and standard deviation of expression).
+- **Explore gene expression by confounders**: gender, smoking status, and age.
+- **Assess association of genes with sample type** (tumor vs normal) using boxplots and a table of effect sizes / p-values.
+
+Throughout, all plots (and tabular displays rendered as plots) are published to GoFigr.
+
+## Load TCGA-LUAD SummarizedExperiment
+
+```{r load-data}
+#se_path <- "TCGA-LUAD_TPM_SE_subset.rds"
+se_path <- "../TCGA-LUAD_TPM_SE.rds"
+stopifnot(file.exists(se_path))
+
+luad_se <- readRDS(se_path)
+luad_se
+```
+
+The object is a `SummarizedExperiment` with gene expression in the `assay` slot, gene annotations in `rowData`, and sample / patient metadata in `colData`.
+
+For convenience we will extract:
+
+```{r extract-components}
+expr_mat <- as.matrix(assay(luad_se))
+gene_info <- as.data.frame(rowData(luad_se))
+sample_info <- as.data.frame(colData(luad_se))
+
+head(sample_info)
+```
+
+## Transform expression to log10(1 + TPM)
+
+We transform all expression values to log10(1 + TPM) to normalize the distribution and reduce the impact of highly expressed genes. This transformation is applied to the entire expression matrix before any downstream analysis.
+
+```{r transform-expression}
+# Transform expression to log10(1 + TPM)
+expr_mat <- log10(1 + expr_mat)
+
+# Also update the assay in the SummarizedExperiment object
+assay(luad_se) <- expr_mat
+
+message("Expression values transformed to log10(1 + TPM)")
+message(paste("Expression range:", round(min(expr_mat, na.rm = TRUE), 3), 
+              "to", round(max(expr_mat, na.rm = TRUE), 3)))
+```
+
+## Patient demographics
+
+In this section we summarize patient-level demographics, using `sample_info`. The exact column names may vary depending on how TCGA data was prepared; here we use commonly present fields such as:
+
+- **gender**
+- **age_at_diagnosis** (which we convert to age in years, if present)
+- **tobacco_smoking_history** or similar fields describing smoking status
+- **sample_type** (e.g. Tumor vs Solid Tissue Normal)
+
+```{r demographics-prep}
+demo_df <- sample_info
+
+# Try to standardize age in years if we have age_at_diagnosis (in days)
+if ("age_at_diagnosis" %in% names(demo_df)) {
+  demo_df$age_years <- demo_df$age_at_diagnosis / 365.25
+}
+
+# Try to identify a smoking variable (TCGA often encodes several variants)
+smoking_cols <- grep("smok|tobacco", names(demo_df), ignore.case = TRUE, value = TRUE)
+if (length(smoking_cols) > 0) {
+  # Take the first smoking-related column for display
+  demo_df$smoking_status <- as.character(demo_df[[smoking_cols[1]]])
+}
+
+# Keep a compact set of demographic variables (where present)
+demo_vars <- c("patient", "bcr_patient_barcode", "gender", "age_years",
+               "smoking_status", "sample_type")
+demo_vars <- intersect(demo_vars, names(demo_df))
+
+demographics <- demo_df %>%
+  dplyr::select(dplyr::all_of(demo_vars))
+
+head(demographics)
+```
+
+### Demographics summary table
+
+We create a summary table of patient demographics and publish it to GoFigr. Since GoFigr doesn't support tables directly, we convert the table to a graphic using `gridExtra::tableGrob()` and `ggplotify::as.ggplot()`.
+
+```{r demographics-table, fig.width=10, fig.height=6}
+# Create a summary table showing first 20 rows of demographics
+demo_table_display <- demographics %>%
+  head(20) %>%
+  dplyr::mutate_all(as.character) %>%
+  dplyr::mutate_all(~ifelse(is.na(.), "", .))
+
+# Convert table to graphic using gridExtra and ggplotify
+demo_table_grob <- gridExtra::tableGrob(
+  demo_table_display,
+  theme = gridExtra::ttheme_minimal(
+    base_size = 9,
+    padding = unit(c(4, 4), "mm")
+  )
+)
+
+demo_table_plot <- ggplotify::as.ggplot(demo_table_grob) +
+  labs(title = "TCGA-LUAD Patient Demographics (first 20 samples)") +
+  theme(plot.title = element_text(hjust = 0.5, size = 12, face = "bold"))
+
+publish(demo_table_plot, data = demo_table_display,
+        figure_name = "TCGA-LUAD demographics table")
+```
+
+We now compute simple counts / summaries by key variables and plot them as small bar charts to serve as graphical tables, which can be captured by gofigR.
+
+### Gender distribution
+
+```{r gender-table, fig.width=5, fig.height=4}
+gender_counts <- demographics %>%
+  dplyr::count(gender) %>%
+  dplyr::mutate(pct = 100 * n / sum(n))
+
+gender_plot <- ggplot(gender_counts, aes(x = gender, y = n, fill = gender)) +
+  geom_col() +
+  geom_text(aes(label = paste0(n, " (", round(pct, 1), "%)")),
+            vjust = -0.2, size = 3) +
+  labs(title = "Gender distribution",
+       x = "Gender",
+       y = "Number of patients") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+publish(gender_plot, data = gender_counts, figure_name = "TCGA-LUAD gender distribution")
+```
+
+### Sample type distribution (tumor vs normal)
+
+```{r sample-type-table, fig.width=5, fig.height=4}
+if ("sample_type" %in% names(demographics)) {
+  sample_type_counts <- demographics %>%
+    dplyr::count(sample_type) %>%
+    dplyr::mutate(pct = 100 * n / sum(n))
+
+  sample_type_plot <- ggplot(sample_type_counts,
+                             aes(x = sample_type, y = n, fill = sample_type)) +
+    geom_col() +
+    geom_text(aes(label = paste0(n, " (", round(pct, 1), "%)")),
+              vjust = -0.2, size = 3) +
+    labs(title = "Sample type distribution",
+         x = "Sample type",
+         y = "Number of samples") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1),
+          legend.position = "none")
+
+  publish(sample_type_plot, data = sample_type_counts,
+          figure_name = "TCGA-LUAD sample type distribution")
+} else {
+  message("No sample_type column found in colData.")
+}
+```
+
+### Smoking status (if available)
+
+```{r smoking-table, fig.width=6, fig.height=4}
+if ("smoking_status" %in% names(demographics)) {
+  smoking_counts <- demographics %>%
+    dplyr::count(smoking_status) %>%
+    dplyr::mutate(pct = 100 * n / sum(n))
+
+  smoking_plot <- ggplot(smoking_counts,
+                         aes(x = smoking_status, y = n, fill = smoking_status)) +
+    geom_col() +
+    geom_text(aes(label = paste0(n, " (", round(pct, 1), "%)")),
+              vjust = -0.2, size = 3) +
+    labs(title = "Smoking status distribution",
+         x = "Smoking status",
+         y = "Number of samples / patients") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1),
+          legend.position = "none")
+
+  publish(smoking_plot, data = smoking_counts,
+          figure_name = "TCGA-LUAD smoking status distribution")
+} else {
+  message("No smoking_status column inferred from colData.")
+}
+```
+
+## Gene-level QC: mean and standard deviation
+
+We now perform simple QC on gene expression across samples. For each gene we calculate:
+
+- **Mean expression** across all samples.
+- **Standard deviation (SD)** across all samples.
+
+These summaries help identify genes with very low expression or little variability.
+
+```{r gene-qc-summary}
+gene_qc <- data.frame(
+  gene_index = seq_len(nrow(expr_mat)),
+  gene_id = if ("gene_id" %in% names(gene_info)) gene_info$gene_id else rownames(expr_mat),
+  gene_name = if ("gene_name" %in% names(gene_info)) gene_info$gene_name else rownames(expr_mat),
+  mean_expr = rowMeans(expr_mat, na.rm = TRUE),
+  sd_expr = apply(expr_mat, 1, sd, na.rm = TRUE)
+)
+
+head(gene_qc)
+```
+
+### Gene QC summary table
+
+We create a summary table showing the top and bottom genes by mean expression and standard deviation, and publish it to GoFigr.
+
+```{r gene-qc-table, fig.width=12, fig.height=8}
+# Create summary table with top and bottom genes
+gene_qc_summary <- gene_qc %>%
+  dplyr::arrange(desc(mean_expr)) %>%
+  dplyr::slice_head(n = 5) %>%
+  dplyr::mutate(rank = "Top 5 by mean") %>%
+  dplyr::bind_rows(
+    gene_qc %>%
+      dplyr::arrange(mean_expr) %>%
+      dplyr::slice_head(n = 5) %>%
+      dplyr::mutate(rank = "Bottom 5 by mean")
+  ) %>%
+  dplyr::bind_rows(
+    gene_qc %>%
+      dplyr::arrange(desc(sd_expr)) %>%
+      dplyr::slice_head(n = 5) %>%
+      dplyr::mutate(rank = "Top 5 by SD")
+  ) %>%
+  dplyr::bind_rows(
+    gene_qc %>%
+      dplyr::arrange(sd_expr) %>%
+      dplyr::slice_head(n = 5) %>%
+      dplyr::mutate(rank = "Bottom 5 by SD")
+  ) %>%
+  dplyr::select(rank, gene_name, gene_id, 
+                mean_expr_rounded = mean_expr, 
+                sd_expr_rounded = sd_expr) %>%
+  dplyr::mutate(
+    mean_expr_rounded = round(mean_expr_rounded, 4),
+    sd_expr_rounded = round(sd_expr_rounded, 4)
+  ) %>%
+  dplyr::mutate_all(as.character) %>%
+  dplyr::rename(
+    Rank = rank,
+    `Gene Name` = gene_name,
+    `Gene ID` = gene_id,
+    `Mean Expression` = mean_expr_rounded,
+    `SD Expression` = sd_expr_rounded
+  )
+
+# Convert table to graphic
+gene_qc_table_grob <- gridExtra::tableGrob(
+  gene_qc_summary,
+  theme = gridExtra::ttheme_minimal(
+    base_size = 9,
+    padding = unit(c(4, 4), "mm")
+  )
+)
+
+gene_qc_table_plot <- ggplotify::as.ggplot(gene_qc_table_grob) +
+  labs(title = "Gene QC Summary: Top and Bottom Genes by Mean Expression and SD") +
+  theme(plot.title = element_text(hjust = 0.5, size = 12, face = "bold"))
+
+publish(gene_qc_table_plot, data = gene_qc_summary,
+        figure_name = "TCGA-LUAD gene QC summary table")
+```
+
+### Distribution of mean expression
+
+```{r mean-expression, fig.width=6, fig.height=4}
+mean_expr_plot <- ggplot(gene_qc, aes(x = mean_expr)) +
+  geom_histogram(bins = 30, color = "white", fill = "steelblue") +
+  labs(title = "Distribution of mean expression across genes",
+       x = "Mean expression",
+       y = "Number of genes") +
+  theme_minimal()
+
+publish(mean_expr_plot, data = gene_qc,
+        figure_name = "TCGA-LUAD gene mean expression distribution")
+```
+
+### Distribution of standard deviation
+
+```{r sd-expression, fig.width=6, fig.height=4}
+sd_expr_plot <- ggplot(gene_qc, aes(x = sd_expr)) +
+  geom_histogram(bins = 30, color = "white", fill = "darkorange") +
+  labs(title = "Distribution of expression standard deviation across genes",
+       x = "Standard deviation of expression",
+       y = "Number of genes") +
+  theme_minimal()
+
+publish(sd_expr_plot, data = gene_qc,
+        figure_name = "TCGA-LUAD gene SD expression distribution")
+```
+
+### Mean vs standard deviation (gene-level scatter)
+
+```{r mean-vs-sd, fig.width=6, fig.height=5}
+mean_sd_scatter <- ggplot(gene_qc, aes(x = mean_expr, y = sd_expr)) +
+  geom_point(alpha = 0.7, size = 1.5) +
+  labs(title = "Mean vs SD of gene expression",
+       x = "Mean expression",
+       y = "Standard deviation") +
+  theme_minimal()
+
+publish(mean_sd_scatter, data = gene_qc,
+        figure_name = "TCGA-LUAD mean vs SD of gene expression")
+```
+
+## Expression versus confounders
+
+We next explore how gene expression varies with potential confounders:
+
+- **Gender**
+- **Smoking status** (if available)
+- **Age**
+
+We focus on genes of interest: **EGFR, TP53, ALK, ROS1, BRAF, MET**. These are key genes in lung adenocarcinoma and will be visualized in the plots below.
+
+```{r long-gene-expression}
+# Define genes of interest
+genes_of_interest <- c("EGFR", "TP53", "ALK", "ROS1", "BRAF", "MET")
+
+gene_long <- as.data.frame(t(expr_mat))
+gene_long$sample_id <- rownames(gene_long)
+
+gene_long <- gene_long %>%
+  tidyr::pivot_longer(
+    cols = -sample_id,
+    names_to = "gene_row",
+    values_to = "expression"
+  )
+
+# Attach gene names from rowData for nicer facet labels
+if ("gene_name" %in% names(gene_info)) {
+  gene_long$gene_name <- gene_info$gene_name[match(gene_long$gene_row, rownames(gene_info))]
+} else {
+  gene_long$gene_name <- gene_long$gene_row
+}
+
+# Filter to genes of interest only
+gene_long <- gene_long %>%
+  dplyr::filter(gene_name %in% genes_of_interest)
+
+# Merge sample covariates
+gene_long <- gene_long %>%
+  dplyr::left_join(
+    sample_info %>%
+      dplyr::mutate(sample_id = rownames(sample_info)),
+    by = "sample_id"
+  )
+
+# Verify we have the expected genes
+message("Genes included in analysis: ", paste(unique(gene_long$gene_name), collapse = ", "))
+head(gene_long)
+```
+
+### Expression by gender
+
+```{r expr-by-gender, fig.width=8, fig.height=5}
+if ("gender" %in% names(gene_long)) {
+  expr_gender_plot <- ggplot(
+    gene_long %>% dplyr::filter(!is.na(gender)),
+    aes(x = gender, y = expression, fill = gender)
+  ) +
+    geom_boxplot(outlier.size = 0.7) +
+    facet_wrap(~ gene_name, scales = "free_y") +
+    labs(title = "Gene expression by gender",
+         x = "Gender",
+         y = "Expression") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1),
+          legend.position = "none")
+
+  publish(expr_gender_plot, data = gene_long,
+          figure_name = "TCGA-LUAD gene expression by gender")
+} else {
+  message("No gender column available in colData.")
+}
+```
+
+### Expression by smoking status (if available)
+
+```{r expr-by-smoking, fig.width=10, fig.height=5}
+if ("smoking_status" %in% names(gene_long)) {
+  expr_smoking_plot <- ggplot(
+    gene_long %>% dplyr::filter(!is.na(smoking_status)),
+    aes(x = smoking_status, y = expression, fill = smoking_status)
+  ) +
+    geom_boxplot(outlier.size = 0.7) +
+    facet_wrap(~ gene_name, scales = "free_y") +
+    labs(title = "Gene expression by smoking status",
+         x = "Smoking status",
+         y = "Expression") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1),
+          legend.position = "none")
+
+  publish(expr_smoking_plot, data = gene_long,
+          figure_name = "TCGA-LUAD gene expression by smoking status")
+} else {
+  message("No smoking_status variable available for expression plots.")
+}
+```
+
+### Expression versus age
+
+We next visualize the relationship between expression and age.
+
+```{r expr-by-age, fig.width=10, fig.height=5}
+age_col <- NULL
+if ("age_years" %in% names(gene_long)) {
+  age_col <- "age_years"
+} else if ("age_at_diagnosis" %in% names(gene_long)) {
+  age_col <- "age_at_diagnosis"
+}
+
+if (!is.null(age_col)) {
+  expr_age_plot <- ggplot(
+    gene_long %>% dplyr::filter(!is.na(.data[[age_col]])),
+    aes(x = .data[[age_col]], y = expression)
+  ) +
+    geom_point(alpha = 0.6) +
+    geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
+    facet_wrap(~ gene_name, scales = "free_y") +
+    labs(
+      title = paste0("Gene expression vs ", age_col),
+      x = age_col,
+      y = "Expression"
+    ) +
+    theme_minimal()
+
+  publish(expr_age_plot, data = gene_long,
+          figure_name = "TCGA-LUAD gene expression vs age")
+} else {
+  message("No age variable available for expression vs age plots.")
+}
+```
+
+## Association of genes with sample type (tumor vs normal)
+
+Finally, we analyze how gene expression differs by **sample type** (e.g. tumor vs normal). We:
+
+1. **Fit linear models** of the form `expression ~ sample_type` for each gene.
+2. Extract **effect sizes** and **p-values**.
+3. Present the results as a table.
+4. Create **boxplots** of expression by sample type for each gene.
+
+```{r gene-sampletype-models}
+if (!("sample_type" %in% names(gene_long))) {
+  stop("sample_type column not found in colData; cannot compute tumor vs normal associations.")
+}
+
+gene_sampletype_results <- gene_long %>%
+  dplyr::filter(!is.na(sample_type)) %>%
+  dplyr::group_by(gene_name) %>%
+  dplyr::do({
+    df <- .
+    # Simple linear model: expression ~ sample_type
+    fit <- try(lm(expression ~ sample_type, data = df), silent = TRUE)
+    if (inherits(fit, "try-error")) {
+      return(data.frame(term = NA, estimate = NA, p.value = NA))
+    }
+    smry <- summary(fit)
+    coefs <- as.data.frame(coef(smry))
+    coefs$term <- rownames(coefs)
+    coefs <- coefs %>%
+      dplyr::select(term, estimate = Estimate, p.value = `Pr(>|t|)`)
+    coefs
+  }) %>%
+  dplyr::ungroup()
+
+gene_sampletype_results
+```
+
+The table below focuses on the `sample_type`-related terms in each model (i.e. the differences between non-baseline sample types and the reference).
+
+```{r gene-sampletype-table, fig.width=10, fig.height=6}
+sampletype_effects <- gene_sampletype_results %>%
+  dplyr::filter(grepl("sample_type", term)) %>%
+  dplyr::arrange(p.value) %>%
+  dplyr::mutate(
+    estimate_rounded = round(estimate, 4),
+    p_value_formatted = formatC(p.value, format = "e", digits = 2),
+    neg_log10_p = round(-log10(p.value), 2)
+  )
+
+# Create a formatted table for display
+sampletype_table_display <- sampletype_effects %>%
+  dplyr::select(gene_name, term, estimate_rounded, p_value_formatted, neg_log10_p) %>%
+  dplyr::rename(
+    Gene = gene_name,
+    Term = term,
+    Estimate = estimate_rounded,
+    `P-value` = p_value_formatted,
+    `-log10(P)` = neg_log10_p
+  ) %>%
+  dplyr::mutate_all(as.character)
+
+# Convert table to graphic
+sampletype_table_grob <- gridExtra::tableGrob(
+  sampletype_table_display,
+  theme = gridExtra::ttheme_minimal(
+    base_size = 9,
+    padding = unit(c(4, 4), "mm")
+  )
+)
+
+sampletype_table_plot <- ggplotify::as.ggplot(sampletype_table_grob) +
+  labs(title = "Gene Expression Association with Sample Type (Linear Model Results)") +
+  theme(plot.title = element_text(hjust = 0.5, size = 12, face = "bold"))
+
+publish(sampletype_table_plot, data = sampletype_table_display,
+        figure_name = "TCGA-LUAD gene-sample type association table")
+
+# Also create the bar plot visualization
+effects_plot <- ggplot(sampletype_effects,
+                       aes(x = reorder(paste(gene_name, term, sep = " : "), -log10(p.value)),
+                           y = -log10(p.value))) +
+  geom_col(fill = "darkred") +
+  coord_flip() +
+  labs(title = "Gene expression association with sample type",
+       x = "Gene : sample_type term",
+       y = "-log10(p-value)") +
+  theme_minimal()
+
+publish(effects_plot, data = sampletype_effects,
+        figure_name = "TCGA-LUAD gene association with sample type")
+```
+
+### Boxplots of expression by sample type
+
+```{r expr-boxplot-sampletype, fig.width=8, fig.height=5}
+expr_sampletype_plot <- ggplot(
+  gene_long %>% dplyr::filter(!is.na(sample_type)),
+  aes(x = sample_type, y = expression, fill = sample_type)
+) +
+  geom_boxplot(outlier.size = 0.7) +
+  facet_wrap(~ gene_name, scales = "free_y") +
+  labs(title = "Gene expression by sample type (tumor vs normal)",
+       x = "Sample type",
+       y = "Expression") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        legend.position = "none")
+
+publish(expr_sampletype_plot, data = gene_long,
+        figure_name = "TCGA-LUAD gene expression by sample type")
+```
+
+## Summary
+
+In this short analysis we:
+
+- **Enabled gofigR** for a TCGA LUAD analysis.
+- **Loaded** a `SummarizedExperiment` from `TCGA-LUAD_TPM_SE_subset.rds`.
+- **Summarized patient demographics** and published graphical tables to GoFigr.
+- **Performed gene-level QC**, visualizing distributions of mean and SD and their joint relationship.
+- **Explored expression versus confounders** (gender, smoking status, age).
+- **Quantified the association between genes and sample type**, both via a model-based summary table and via boxplots.
+
+Every figure, including the table-like graphics, has been **published to GoFigr**, enabling reproducible sharing and inspection of the underlying data and code.
+
+
