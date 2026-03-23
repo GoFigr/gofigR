@@ -4,7 +4,7 @@
 \alias{create_asset}
 \title{Creates a new asset}
 \usage{
-create_asset(gf, workspace, name, description = NULL)
+create_asset(gf, workspace, name, description = NULL, analysis = NULL)
 }
 \arguments{
 \item{gf}{GoFigr client}
@@ -14,6 +14,8 @@ create_asset(gf, workspace, name, description = NULL)
 \item{name}{name of the asset}
 
 \item{description}{description of the asset}
+
+\item{analysis}{optional analysis API ID to scope the asset under}
 }
 \value{
 asset object

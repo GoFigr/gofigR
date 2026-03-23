@@ -90,7 +90,7 @@ watermark_generator <- function(show_qr=TRUE,
       font_size <- as.integer(1.0 * font_size * w / 700)
     }
 
-    url <- file.path(APP_URL, "r", get_api_id(revision))
+    url <- file.path(APP_URL, "r", default_if_null(revision$short_id, get_api_id(revision)))
 
     # Link
     mark <- magick::image_blank(width=link_size_px[[1]],

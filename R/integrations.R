@@ -188,9 +188,12 @@ intercept <- function(plot_func) {
   }
 }
 
-create_bare_revision <- function(client, fig, input_path, metadata) {
+create_bare_revision <- function(client, fig, input_path, metadata,
+                                 client_id=NULL, short_id=NULL) {
   sess <- utils::sessionInfo()
   info <- utils::capture.output({base::print(sess)})
+
+  git_info <- annotate_git()
 
   total_metadata <- list(input=input_path,
                          `getwd`=getwd(),
@@ -198,6 +201,11 @@ create_bare_revision <- function(client, fig, input_path, metadata) {
                          `R details`=sess$R.version,
                          `Sys.info()`=as.list(Sys.info()),
                          `rsvg`=rsvg::librsvg_version())
+
+  if(!is.null(git_info)) {
+    total_metadata$git <- git_info
+  }
+
   for(name in names(metadata)) {
     if("knitr_strict_list" %in% class(metadata[[name]])) {
       total_metadata[[name]] <- do.call(list, metadata[[name]])
@@ -206,8 +214,10 @@ create_bare_revision <- function(client, fig, input_path, metadata) {
     }
   }
 
-  rev <-gofigR::create_revision(client, fig,
-                                metadata = total_metadata)
+  rev <- gofigR::create_revision(client, fig,
+                                 metadata = total_metadata,
+                                 client_id = client_id,
+                                 short_id = short_id)
 
   return(rev)
 }
@@ -227,6 +237,66 @@ apply_watermark <- function(rev_bare, plot_obj, gf_opts, width=NULL, height=NULL
   } else {
     return(NULL)
   }
+}
+
+
+annotate_git <- function() {
+  tryCatch({
+    repo <- git2r::repository(".", discover = TRUE)
+    head <- git2r::repository_head(repo)
+    branch <- head$name
+    hash <- git2r::sha(head)
+    remote <- git2r::remote_url(repo)
+
+    # Convert SSH to HTTPS for commit link
+    http_url <- sub("\\.git$", "", remote)
+    if (startsWith(http_url, "git@")) {
+      http_url <- sub("^git@", "https://", http_url)
+      http_url <- sub(":", "/", http_url)
+    }
+
+    commit_link <- if (grepl("github.com", http_url, ignore.case = TRUE)) {
+      paste0(http_url, "/commit/", hash)
+    } else if (grepl("bitbucket.org", http_url, ignore.case = TRUE)) {
+      paste0(http_url, "/commits/", hash)
+    } else {
+      NULL
+    }
+
+    list(branch = branch, hash = hash, remote_url = remote,
+         commit_link = commit_link)
+  }, error = function(e) NULL, warning = function(e) NULL)
+}
+
+
+annotate_system <- function() {
+  info <- Sys.info()
+  paste0(info["sysname"], " ", info["nodename"], " ", info["release"], " ",
+         info["version"], " ", info["machine"])
+}
+
+
+annotate_packages <- function() {
+  # Prefer renv lockfile if project uses renv
+  lockfile <- file.path(getwd(), "renv.lock")
+  if (file.exists(lockfile)) {
+    return(paste0(readLines(lockfile, warn = FALSE), collapse = "\n"))
+  }
+
+  # Fallback: installed.packages() summary
+  pkgs <- utils::installed.packages()[, c("Package", "Version")]
+  paste0(pkgs[, "Package"], "==", pkgs[, "Version"], collapse = "\n")
+}
+
+
+annotate_history <- function() {
+  tryCatch({
+    tmp <- tempfile()
+    utils::savehistory(tmp)
+    history <- paste0(readLines(tmp, warn = FALSE), collapse = "\n")
+    file.remove(tmp)
+    if (nchar(trimws(history)) == 0) NULL else history
+  }, error = function(e) NULL)
 }
 
 
@@ -270,6 +340,25 @@ annotate <- function(rev_bare, plot_obj, figure_name,
     data <- append(data, list(make_code_data("Active document", source_contents,
                                              tools::file_ext(source_path))))
   }
+
+  # System info
+  sys_info <- annotate_system()
+  if(!is.null(sys_info)) {
+    data <- append(data, list(make_text_data("System Info", sys_info)))
+  }
+
+  # Installed packages
+  pkg_info <- annotate_packages()
+  if(!is.null(pkg_info)) {
+    data <- append(data, list(make_text_data("Installed packages", pkg_info)))
+  }
+
+  # R history
+  history_text <- annotate_history()
+  if(!is.null(history_text)) {
+    data <- append(data, list(make_code_data("R history", history_text, "R")))
+  }
+
   return(data)
 }
 
@@ -509,8 +598,13 @@ publish <- function(plot_obj,
 
   fig <- gofigR::find_figure(gf_opts$client, gf_opts$analysis, figure_name, create=TRUE)
 
+  # Generate client-side UUID and short ID before creating the revision
+  client_id <- uuid::UUIDgenerate()
+  short_id <- next_short_id(gf_opts)
+
   # Create a bare revision to get API ID
-  rev_bare <- create_bare_revision(client, fig, input_path, metadata)
+  rev_bare <- create_bare_revision(client, fig, input_path, metadata,
+                                   client_id = client_id, short_id = short_id)
 
   # Now that we have an API ID, apply the watermark
   image_data <- list(make_image_data("figure", png_path, "png", FALSE))
@@ -741,6 +835,11 @@ read.xlsx <- wrap_reader(openxlsx::read.xlsx)
 #' @param api_key GoFigr API key
 #' @param url GoFigr API URL
 #'
+#' @note Do not call \code{publish()} from forked child processes
+#'   (e.g. inside \code{parallel::mclapply} or \code{future::plan(multicore)}).
+#'   Forks inherit the short ID counter, which can produce duplicate IDs and
+#'   server-side conflicts. Graphics devices also do not survive forks.
+#'
 #' @return named list of GoFigr options
 #' @export
 enable <- function(auto_publish=FALSE,
@@ -797,6 +896,11 @@ enable <- function(auto_publish=FALSE,
     stop("Please specify either analysis_api_id or analysis_name")
   }
 
+  sid_prefix <- reserve_short_id_prefix(gf)
+  if(verbose && !is.null(sid_prefix)) {
+    message(paste0("Reserved short ID prefix: ", sid_prefix))
+  }
+
   set_options(structure(local({
     client <- gf
     analysis <- ana
@@ -806,6 +910,8 @@ enable <- function(auto_publish=FALSE,
     debug <- debug
     show <- show
     assets <- list()
+    short_id_prefix <- sid_prefix
+    short_id_counter <- 0L
 
     return(environment())
   })))

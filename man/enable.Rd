@@ -62,3 +62,9 @@ named list of GoFigr options
 \description{
 Enables GoFigr in the current R/Rmd file.
 }
+\note{
+Do not call \code{publish()} from forked child processes
+  (e.g. inside \code{parallel::mclapply} or \code{future::plan(multicore)}).
+  Forks inherit the short ID counter, which can produce duplicate IDs and
+  server-side conflicts. Graphics devices also do not survive forks.
+}

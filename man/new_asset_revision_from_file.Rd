@@ -4,7 +4,7 @@
 \alias{new_asset_revision_from_file}
 \title{Creates a new asset revision from file.}
 \usage{
-new_asset_revision_from_file(gf, workspace_id, path)
+new_asset_revision_from_file(gf, workspace_id, path, analysis_id = NULL)
 }
 \arguments{
 \item{gf}{GoFigr client}
@@ -12,6 +12,8 @@ new_asset_revision_from_file(gf, workspace_id, path)
 \item{workspace_id}{parent workspace in case we have to create a brand new asset}
 
 \item{path}{path to file}
+
+\item{analysis_id}{optional analysis API ID to scope the asset under}
 }
 \value{
 asset revision object

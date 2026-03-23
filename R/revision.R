@@ -38,7 +38,8 @@ get_revision_url <- function(rev) {
     base_url <- APP_URL
   }
 
-  paste0(base_url, "/r/", rev$api_id)
+  id <- default_if_null(rev$short_id, rev$api_id)
+  paste0(base_url, "/r/", id)
 }
 
 #' Creates a new revision
@@ -47,18 +48,33 @@ get_revision_url <- function(rev) {
 #' @param figure figure under which to create the revision
 #' @param metadata metadata for the revision, as a named list
 #' @param data list of Data objects
+#' @param client_id optional client-generated UUID for idempotent creation.
+#'   When provided, the server uses this as the revision's ID and returns
+#'   409 Conflict if a revision with the same client_id already exists.
+#' @param short_id optional short ID for compact QR codes. Generated via
+#'   \code{\link{reserve_short_id_prefix}} and \code{make_short_id}.
 #'
 #' @return created revision object
 #' @export
-create_revision <- function(gf, figure, metadata=list(), data=NULL) {
+create_revision <- function(gf, figure, metadata=list(), data=NULL,
+                            client_id=NULL, short_id=NULL) {
   if(is.null(data)) {
     data <- list()
   }
 
+  body <- list(figure=get_api_id(figure),
+               metadata=metadata,
+               data=lapply(data, encode_raw_data))
+
+  if(!is.null(client_id)) {
+    body$client_id <- client_id
+  }
+  if(!is.null(short_id)) {
+    body$short_id <- short_id
+  }
+
   response_to_JSON(gofigr_POST(gf, "revision/",
-                               body=obj_to_JSON(list(figure=get_api_id(figure),
-                                                     metadata=metadata,
-                                                     data=lapply(data, encode_raw_data))),
+                               body=obj_to_JSON(body),
                                httr::content_type_json(),
                                expected_status_code = 201))
 }

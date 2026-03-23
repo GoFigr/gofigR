@@ -1,5 +1,5 @@
 API_URL = "https://api.gofigr.io"
-API_VERSION = "v1.2"
+API_VERSION = "v1.4.1"
 
 APP_URL = "https://app.gofigr.io"
 
