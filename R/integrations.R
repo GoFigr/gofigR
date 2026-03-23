@@ -188,11 +188,9 @@ intercept <- function(plot_func) {
   }
 }
 
-create_bare_revision <- function(client, fig, input_path, metadata,
-                                 client_id=NULL, short_id=NULL) {
+build_metadata <- function(input_path, metadata) {
   sess <- utils::sessionInfo()
   info <- utils::capture.output({base::print(sess)})
-
   git_info <- annotate_git()
 
   total_metadata <- list(input=input_path,
@@ -213,6 +211,13 @@ create_bare_revision <- function(client, fig, input_path, metadata,
       total_metadata[[name]] <- metadata[[name]]
     }
   }
+  total_metadata
+}
+
+
+create_bare_revision <- function(client, fig, input_path, metadata,
+                                 client_id=NULL, short_id=NULL) {
+  total_metadata <- build_metadata(input_path, metadata)
 
   rev <- gofigR::create_revision(client, fig,
                                  metadata = total_metadata,
@@ -531,6 +536,8 @@ publish_base <- function(expr, ...) {
 #' @param height height of the output image. If NULL, uses current device dimensions.
 #' @param units units for width and height. Default is "in" (inches). Other options include "cm", "mm", "px".
 #' @param dpi resolution of the output image. If NULL, uses ggsave default (300).
+#' @param auto_assign if TRUE, use AI-based auto-assignment instead of explicit
+#'   figure names. If NULL (default), uses the value set in \code{\link{enable}}.
 #'
 #' @returns GoFigr revision object
 #' @export
@@ -547,7 +554,8 @@ publish <- function(plot_obj,
                     width=NULL,
                     height=NULL,
                     units="in",
-                    dpi=NULL) {
+                    dpi=NULL,
+                    auto_assign=NULL) {
   gf_opts <- get_options()
   if(is.null(gf_opts)) {
     warning("GoFigr hasn't been configured. Did you call gofigR::enable()?")
@@ -577,7 +585,12 @@ publish <- function(plot_obj,
     metadata <- context$metadata
   }
 
-  if(is.null(figure_name)) {
+  # Resolve auto_assign: per-call override or session default
+  if(is.null(auto_assign)) {
+    auto_assign <- isTRUE(gf_opts$auto_assign)
+  }
+
+  if(!auto_assign && is.null(figure_name)) {
     figure_name <- "Anonymous Figure"
     warning("Your figure lacks a name and will be published as Anonymous Figure.")
   }
@@ -596,15 +609,22 @@ publish <- function(plot_obj,
     return()
   }
 
-  fig <- gofigR::find_figure(gf_opts$client, gf_opts$analysis, figure_name, create=TRUE)
-
   # Generate client-side UUID and short ID before creating the revision
   client_id <- uuid::UUIDgenerate()
   short_id <- next_short_id(gf_opts)
 
-  # Create a bare revision to get API ID
-  rev_bare <- create_bare_revision(client, fig, input_path, metadata,
-                                   client_id = client_id, short_id = short_id)
+  if(auto_assign) {
+    # Auto-assign: server uses AI to assign to the correct figure
+    rev_bare <- create_revision_auto_assign(client, gf_opts$analysis,
+                                            metadata = build_metadata(input_path, metadata),
+                                            client_id = client_id, short_id = short_id)
+  } else {
+    fig <- gofigR::find_figure(gf_opts$client, gf_opts$analysis, figure_name, create=TRUE)
+
+    # Create a bare revision to get API ID
+    rev_bare <- create_bare_revision(client, fig, input_path, metadata,
+                                     client_id = client_id, short_id = short_id)
+  }
 
   # Now that we have an API ID, apply the watermark
   image_data <- list(make_image_data("figure", png_path, "png", FALSE))
@@ -619,7 +639,8 @@ publish <- function(plot_obj,
   }))
   image_data <- image_data[!is.null(image_data)]
 
-  other_data <- annotate(rev_bare, plot_obj, fig$name, input_path, input_contents, chunk_code, data)
+  fig_name <- if(auto_assign) figure_name else fig$name
+  other_data <- annotate(rev_bare, plot_obj, fig_name, input_path, input_contents, chunk_code, data)
 
   rev <- gofigR::update_revision_data(client, rev_bare, silent=TRUE,
                                       new_data=append(image_data, other_data),
@@ -627,7 +648,7 @@ publish <- function(plot_obj,
   file.remove(png_path)
 
   if(gf_opts$verbose) {
-    message(paste0("\"", fig$name, "\" at ", get_revision_url(rev), "\n"))
+    message(paste0("Published at ", get_revision_url(rev), "\n"))
   }
 
   debug_message(paste0("Ending publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
@@ -832,6 +853,9 @@ read.xlsx <- wrap_reader(openxlsx::read.xlsx)
 #' @param show which figure to display in the document: original, watermark, or hide. Note that this setting \
 #' only affects the display and doesn't change what gets published: e.g. even if you choose to display \
 #' the original figure, the watermarked version will still be published to GoFigr.
+#' @param auto_assign if TRUE, use AI-based auto-assignment of figures instead of
+#'   explicit figure names. Requires AI to be enabled on the server. Can be
+#'   overridden per-call in \code{\link{publish}}.
 #' @param api_key GoFigr API key
 #' @param url GoFigr API URL
 #'
@@ -854,6 +878,7 @@ enable <- function(auto_publish=FALSE,
                    watermark=QR_WATERMARK,
                    verbose=FALSE,
                    debug=FALSE,
+                   auto_assign=FALSE,
                    api_key=NULL,
                    url=NULL,
                    show="watermark") {
@@ -901,6 +926,17 @@ enable <- function(auto_publish=FALSE,
     message(paste0("Reserved short ID prefix: ", sid_prefix))
   }
 
+  # Check if AI is enabled on the server when auto_assign is requested
+  if(auto_assign) {
+    info <- server_info(gf)
+    ai_enabled <- info$ai_enabled
+    if(identical(ai_enabled, FALSE)) {
+      warning("auto_assign=TRUE but AI is disabled on the server. ",
+              "We will use figure titles instead.")
+      auto_assign <- FALSE
+    }
+  }
+
   set_options(structure(local({
     client <- gf
     analysis <- ana
@@ -909,6 +945,7 @@ enable <- function(auto_publish=FALSE,
     verbose <- verbose
     debug <- debug
     show <- show
+    auto_assign <- auto_assign
     assets <- list()
     short_id_prefix <- sid_prefix
     short_id_counter <- 0L

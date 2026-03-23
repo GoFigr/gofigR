@@ -80,6 +80,45 @@ create_revision <- function(gf, figure, metadata=list(), data=NULL,
 }
 
 
+#' Creates a new revision via the auto-assign endpoint.
+#'
+#' The server creates a temporary figure, processes the image data, then uses
+#' AI to assign the revision to the correct figure. The revision will have
+#' \code{is_processing=TRUE} until assignment completes.
+#'
+#' @param gf GoFigr client
+#' @param analysis analysis under which to auto-assign the revision
+#' @param metadata metadata for the revision, as a named list
+#' @param data list of Data objects
+#' @param client_id optional client-generated UUID for idempotent creation
+#' @param short_id optional short ID for compact QR codes
+#'
+#' @return created revision object
+#' @export
+create_revision_auto_assign <- function(gf, analysis, metadata=list(), data=NULL,
+                                        client_id=NULL, short_id=NULL) {
+  if(is.null(data)) {
+    data <- list()
+  }
+
+  body <- list(analysis=get_api_id(analysis),
+               metadata=metadata,
+               data=lapply(data, encode_raw_data))
+
+  if(!is.null(client_id)) {
+    body$client_id <- client_id
+  }
+  if(!is.null(short_id)) {
+    body$short_id <- short_id
+  }
+
+  response_to_JSON(gofigr_POST(gf, "revision/auto-assign/",
+                               body=obj_to_JSON(body),
+                               httr::content_type_json(),
+                               expected_status_code = 201))
+}
+
+
 #' Updates data associated with a figure
 #'
 #' @param gf GoFigr client

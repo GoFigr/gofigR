@@ -407,6 +407,22 @@ user_info <- function(gf) {
   response_to_JSON(gofigr_GET(gf, "user/"))[[1]]
 }
 
+#' Returns cached server info from the /info/ endpoint.
+#'
+#' @param gf GoFigr client
+#'
+#' @return named list with server info, or empty list if the call fails
+#' @export
+server_info <- function(gf) {
+  if(is.null(gf$.server_info)) {
+    gf$.server_info <- tryCatch({
+      response_to_JSON(gofigr_GET(gf, "info/"))
+    }, error = function(e) list())
+  }
+  gf$.server_info
+}
+
+
 #' Creates a new API key. This function will only succeed if using password
 #' authentication.
 #'

@@ -18,7 +18,8 @@ publish(
   width = NULL,
   height = NULL,
   units = "in",
-  dpi = NULL
+  dpi = NULL,
+  auto_assign = NULL
 )
 }
 \arguments{
@@ -49,6 +50,9 @@ publish(
 \item{units}{units for width and height. Default is "in" (inches). Other options include "cm", "mm", "px".}
 
 \item{dpi}{resolution of the output image. If NULL, uses ggsave default (300).}
+
+\item{auto_assign}{if TRUE, use AI-based auto-assignment instead of explicit
+figure names. If NULL (default), uses the value set in \code{\link{enable}}.}
 }
 \value{
 GoFigr revision object

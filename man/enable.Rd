@@ -17,6 +17,7 @@ enable(
   watermark = QR_WATERMARK,
   verbose = FALSE,
   debug = FALSE,
+  auto_assign = FALSE,
   api_key = NULL,
   url = NULL,
   show = "watermark"
@@ -47,6 +48,10 @@ that setting this option will re-assign plot() and print() in the global environ
 \item{verbose}{whether to show verbose output}
 
 \item{debug}{whether to show debugging information}
+
+\item{auto_assign}{if TRUE, use AI-based auto-assignment of figures instead of
+explicit figure names. Requires AI to be enabled on the server. Can be
+overridden per-call in \code{\link{publish}}.}
 
 \item{api_key}{GoFigr API key}
 
