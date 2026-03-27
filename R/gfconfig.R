@@ -119,7 +119,7 @@ login_with_device_flow <- function(api_url, auth0_config, max_attempts=3) {
       message("  => Authenticated successfully\n")
       access_token <- token_data$access_token
 
-      gf <- gofigr_client(url=api_url, anonymous=TRUE, ignore_config=TRUE)
+      gf <- gofigr_client(url=api_url, ignore_config=TRUE)
       gf$access_token <- access_token
       return(gf)
     }

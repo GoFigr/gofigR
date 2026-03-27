@@ -306,6 +306,11 @@ gofigr_make_handler <- function(name, method) {
 
     if(gf$anonymous) {
       res <- method(full_url)
+    } else if(!is.null(gf$access_token) && (is.null(gf$username) || gf$username == "")) {
+      # Pre-set access token (e.g. from Auth0 device flow) — no refresh available
+      res <- method(full_url,
+                    httr::add_headers(Authorization = paste0('Bearer ', gf$access_token)),
+                    ...)
     } else if(!is.null(gf$username) && !is.null(gf$password) && gf$username != "" && gf$password != "") {
       # JWT
 
