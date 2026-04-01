@@ -233,14 +233,18 @@ capture_function_source <- function(fn) {
 #' @param imports named list mapping aliases to package names (e.g.
 #'   \code{list(plt = "ggplot2")}). Optional.
 #' @param name optional display name for the function (shown in the webapp)
-#' @param interactive if TRUE, launches a Shiny gadget in the RStudio Viewer pane
-#'   with parameter widgets for interactive exploration. The user can adjust parameters
-#'   and re-run the figure live, then click Publish to publish with clean room metadata.
+#' @param interactive if TRUE, launches a Shiny gadget with parameter widgets for
+#'   interactive exploration. The user can adjust parameters and re-run the figure
+#'   live, then click Publish to publish with clean room metadata.
+#' @param viewer Shiny viewer function for the interactive gadget. Only used when
+#'   \code{interactive = TRUE}. Defaults to \code{shiny::dialogViewer}. Use
+#'   \code{shiny::paneViewer()} for the RStudio Viewer pane or
+#'   \code{shiny::browserViewer()} for an external browser window.
 #'
 #' @return whatever the function body returns (typically the result of \code{publish()})
 #' @export
 reproducible <- function(fn, packages = character(0), imports = list(), name = NULL,
-                         interactive = FALSE) {
+                         interactive = FALSE, viewer = NULL) {
   # Check for nanoparquet
 
   if (!requireNamespace("nanoparquet", quietly = TRUE)) {
@@ -321,7 +325,8 @@ reproducible <- function(fn, packages = character(0), imports = list(), name = N
 
   # Step 7: Execute -- either interactive gadget or single-shot
   if (interactive) {
-    run_reproducible_gadget(fn, descriptors, resolved_params, packages, clean_env, context)
+    run_reproducible_gadget(fn, descriptors, resolved_params, packages, clean_env, context,
+                            viewer = viewer)
   } else {
     eval(body(fn), envir = clean_env)
   }
@@ -370,7 +375,8 @@ param_to_shiny_input <- function(ns, name, desc) {
 #' @param clean_env the clean execution environment
 #' @param context the clean room context
 run_reproducible_gadget <- function(fn, descriptors, resolved_params,
-                                    packages, clean_env, context) {
+                                    packages, clean_env, context,
+                                    viewer = NULL) {
   # Identify interactive params (those with widgets)
   interactive_params <- Filter(function(d) !is.null(d$widget), descriptors)
 
@@ -531,6 +537,8 @@ run_reproducible_gadget <- function(fn, descriptors, resolved_params,
     })
   }
 
-  viewer <- shiny::dialogViewer("Clean Room", width = 1100, height = 700)
+  if (is.null(viewer)) {
+    viewer <- shiny::dialogViewer("Clean Room", width = 1100, height = 700)
+  }
   shiny::runGadget(ui, server, viewer = viewer, stopOnCancel = TRUE)
 }

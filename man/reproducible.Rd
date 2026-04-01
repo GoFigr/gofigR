@@ -9,7 +9,8 @@ reproducible(
   packages = character(0),
   imports = list(),
   name = NULL,
-  interactive = FALSE
+  interactive = FALSE,
+  viewer = NULL
 )
 }
 \arguments{
@@ -24,9 +25,14 @@ if not provided.}
 
 \item{name}{optional display name for the function (shown in the webapp)}
 
-\item{interactive}{if TRUE, launches a Shiny gadget in the RStudio Viewer pane
-with parameter widgets for interactive exploration. The user can adjust parameters
-and re-run the figure live, then click Publish to publish with clean room metadata.}
+\item{interactive}{if TRUE, launches a Shiny gadget with parameter widgets for
+interactive exploration. The user can adjust parameters and re-run the figure
+live, then click Publish to publish with clean room metadata.}
+
+\item{viewer}{Shiny viewer function for the interactive gadget. Only used when
+\code{interactive = TRUE}. Defaults to \code{shiny::dialogViewer}. Use
+\code{shiny::paneViewer()} for the RStudio Viewer pane or
+\code{shiny::browserViewer()} for an external browser window.}
 }
 \value{
 whatever the function body returns (typically the result of \code{publish()})

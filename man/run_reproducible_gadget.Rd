@@ -10,7 +10,8 @@ run_reproducible_gadget(
   resolved_params,
   packages,
   clean_env,
-  context
+  context,
+  viewer = NULL
 )
 }
 \arguments{
