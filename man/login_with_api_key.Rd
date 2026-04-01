@@ -7,7 +7,7 @@
 login_with_api_key(gf, max_attempts)
 }
 \arguments{
-\item{gf}{Password-authenticated GoFigr client created by `gofigr_client()`.}
+\item{gf}{Authenticated GoFigr client created by `gofigr_client()`.}
 
 \item{max_attempts}{Maximum number of attempts when validating a user-
 supplied API key.}
@@ -17,7 +17,7 @@ A character string containing a valid API key, either supplied
   by the user or newly created.
 }
 \description{
-Given a password-authenticated GoFigr client, this helper either accepts an
+Given an authenticated GoFigr client, this helper either accepts an
 existing API key entered by the user or creates a new API key via the API.
 The newly created key is associated with the authenticated user.
 }

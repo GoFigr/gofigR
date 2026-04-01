@@ -172,12 +172,18 @@ encode_raw_data <- function(data) {
     datum <- base64enc::base64encode(data$data)
   }
 
-  return(list(
+  encoded <- list(
     name=data$name,
     type=data$type,
     metadata=data$metadata,
     data=datum
-  ))
+  )
+
+  if (isTRUE(data$is_clean_room)) {
+    encoded$is_clean_room <- TRUE
+  }
+
+  return(encoded)
 }
 
 #' Retrieves a data object. Use in conjunction with get_revision or get_asset_revision,

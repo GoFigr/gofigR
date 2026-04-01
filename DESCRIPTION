@@ -17,6 +17,7 @@ RoxygenNote: 7.3.3
 Imports: httr, jsonlite, knitr, base64enc, readr, magick, qrcode, digest,
   getPass, scriptName, rstudioapi, rsvg, cowplot, ggplotify, shiny, shinyjs, uuid, git2r
 Suggests:
+    nanoparquet,
     ggplot2,
     gplots,
     rmarkdown,

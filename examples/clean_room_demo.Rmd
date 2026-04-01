@@ -1,0 +1,105 @@
+---
+title: "GoFigr Clean Room Demo"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(gofigR)
+library(ggplot2)
+
+knitr::opts_chunk$set(echo = TRUE)
+gofigR::enable(url="http://localhost:9090",
+               workspace_name="Scratchpad",
+               analysis_name="Clean room in R",
+               api_key="49cb3c49129a13d74908cbe631c47c673b3753191e71a3147ddbf48e611b3d51")
+```
+
+## Clean Room: Interactive Reproducibility
+
+The `reproducible()` function captures everything needed to re-run a figure in
+an isolated environment: source code, parameter values with widget metadata,
+package versions, and input data. Call `publish()` inside the function body to
+publish with full clean room metadata, enabling interactive parameter exploration
+in the web viewer.
+
+## Basic example: Iris scatter plot
+
+Parameters are declared as function defaults using `slider()`, `dropdown()`,
+`checkbox()`, and `text_input()`. Data frames use `static()`.
+
+```{r iris_scatter, fig.width=8, fig.height=6}
+reproducible(function(
+    point_size = slider(2, min = 0.5, max = 5, step = 0.5),
+    alpha = slider(0.7, min = 0.1, max = 1.0, step = 0.1),
+    color_by = dropdown("Species", choices = c("Species", "Sepal.Width", "Petal.Width")),
+    show_smooth = checkbox(FALSE),
+    data = static(iris)
+  ) {
+    p <- ggplot(data, aes(x = Sepal.Length, y = Petal.Length, color = .data[[color_by]])) +
+      geom_point(size = point_size, alpha = alpha) +
+      labs(title = "Iris: Sepal Length vs Petal Length",
+           x = "Sepal Length (cm)", y = "Petal Length (cm)") +
+      theme_minimal()
+
+    if (show_smooth) {
+      p <- p + geom_smooth(method = "lm", se = FALSE)
+    }
+
+    publish(p, figure_name = "Iris Scatter")
+  },
+  packages = c("ggplot2")
+)
+```
+
+## Histogram with configurable binning
+
+```{r histogram, fig.width=8, fig.height=5}
+reproducible(function(
+    bins = slider(20L, min = 5L, max = 50L, step = 5L),
+    fill_color = dropdown("steelblue", choices = c("steelblue", "coral", "forestgreen", "goldenrod")),
+    show_density = checkbox(TRUE),
+    title = text_input("Distribution of MPG"),
+    data = static(mtcars)
+  ) {
+    p <- ggplot(data, aes(x = mpg)) +
+      geom_histogram(bins = bins, fill = fill_color, color = "white", alpha = 0.8) +
+      labs(title = title, x = "Miles per Gallon", y = "Count") +
+      theme_minimal()
+
+    if (show_density) {
+      p <- p + geom_density(aes(y = after_stat(count)), linewidth = 0.8)
+    }
+
+    publish(p, figure_name = "MPG Distribution")
+  },
+  packages = c("ggplot2")
+)
+```
+
+## Faceted analysis
+
+```{r faceted, fig.width=10, fig.height=6}
+reproducible(function(
+    metric = dropdown("Sepal.Length", choices = c("Sepal.Length", "Sepal.Width",
+                                                   "Petal.Length", "Petal.Width")),
+    geom = dropdown("boxplot", choices = c("boxplot", "violin", "jitter")),
+    data = static(iris)
+  ) {
+    p <- ggplot(data, aes(x = Species, y = .data[[metric]], fill = Species)) +
+      theme_minimal() +
+      labs(title = paste(metric, "by Species"), y = metric) +
+      theme(legend.position = "none")
+
+    if (geom == "boxplot") {
+      p <- p + geom_boxplot(alpha = 0.7)
+    } else if (geom == "violin") {
+      p <- p + geom_violin(alpha = 0.7) + geom_jitter(width = 0.1, size = 0.8)
+    } else {
+      p <- p + geom_jitter(width = 0.2, size = 2, alpha = 0.6)
+    }
+
+    publish(p, figure_name = paste(metric, "by Species"))
+  },
+  packages = c("ggplot2")
+)
+```

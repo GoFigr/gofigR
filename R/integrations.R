@@ -642,9 +642,19 @@ publish <- function(plot_obj,
   fig_name <- if(auto_assign) figure_name else fig$name
   other_data <- annotate(rev_bare, plot_obj, fig_name, input_path, input_contents, chunk_code, data)
 
+  # Check for clean room context injected by reproducible()
+  clean_room_ctx <- get0(".gf_clean_room_context", envir = parent.frame(), inherits = TRUE)
+  is_clean_room <- NULL
+  if (!is.null(clean_room_ctx)) {
+    clean_room_data <- build_clean_room_data(clean_room_ctx)
+    other_data <- append(other_data, clean_room_data)
+    is_clean_room <- TRUE
+  }
+
   rev <- gofigR::update_revision_data(client, rev_bare, silent=TRUE,
                                       new_data=append(image_data, other_data),
-                                      assets=unname(gf_opts$assets))
+                                      assets=unname(gf_opts$assets),
+                                      is_clean_room=is_clean_room)
   file.remove(png_path)
 
   if(gf_opts$verbose) {
