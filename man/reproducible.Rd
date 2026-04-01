@@ -4,7 +4,13 @@
 \alias{reproducible}
 \title{Execute a function in a clean room environment and publish with full reproducibility metadata.}
 \usage{
-reproducible(fn, packages = character(0), imports = list(), name = NULL)
+reproducible(
+  fn,
+  packages = character(0),
+  imports = list(),
+  name = NULL,
+  interactive = FALSE
+)
 }
 \arguments{
 \item{fn}{a function whose formals use \code{gf_param} defaults}
@@ -17,6 +23,10 @@ if not provided.}
 \code{list(plt = "ggplot2")}). Optional.}
 
 \item{name}{optional display name for the function (shown in the webapp)}
+
+\item{interactive}{if TRUE, launches a Shiny gadget in the RStudio Viewer pane
+with parameter widgets for interactive exploration. The user can adjust parameters
+and re-run the figure live, then click Publish to publish with clean room metadata.}
 }
 \value{
 whatever the function body returns (typically the result of \code{publish()})

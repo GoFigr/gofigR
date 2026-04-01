@@ -233,10 +233,14 @@ capture_function_source <- function(fn) {
 #' @param imports named list mapping aliases to package names (e.g.
 #'   \code{list(plt = "ggplot2")}). Optional.
 #' @param name optional display name for the function (shown in the webapp)
+#' @param interactive if TRUE, launches a Shiny gadget in the RStudio Viewer pane
+#'   with parameter widgets for interactive exploration. The user can adjust parameters
+#'   and re-run the figure live, then click Publish to publish with clean room metadata.
 #'
 #' @return whatever the function body returns (typically the result of \code{publish()})
 #' @export
-reproducible <- function(fn, packages = character(0), imports = list(), name = NULL) {
+reproducible <- function(fn, packages = character(0), imports = list(), name = NULL,
+                         interactive = FALSE) {
   # Check for nanoparquet
 
   if (!requireNamespace("nanoparquet", quietly = TRUE)) {
@@ -315,6 +319,218 @@ reproducible <- function(fn, packages = character(0), imports = list(), name = N
   # Inject clean room context (discovered by publish() via parent.frame())
   clean_env$.gf_clean_room_context <- context
 
-  # Step 7: Execute function body in clean environment
-  eval(body(fn), envir = clean_env)
+  # Step 7: Execute -- either interactive gadget or single-shot
+  if (interactive) {
+    run_reproducible_gadget(fn, descriptors, resolved_params, packages, clean_env, context)
+  } else {
+    eval(body(fn), envir = clean_env)
+  }
+}
+
+
+# ---- Shiny gadget for interactive parameter exploration ----
+
+#' Build a Shiny input widget from a gf_param descriptor.
+#' @param ns Shiny namespace function
+#' @param name parameter name
+#' @param desc gf_param descriptor
+#' @return Shiny input element, or NULL for static params
+param_to_shiny_input <- function(ns, name, desc) {
+  if (is.null(desc$widget)) return(NULL)  # static params have no widget
+
+  input_id <- ns(name)
+  label <- name
+
+  switch(desc$widget,
+    slider = {
+      step <- desc$step %||% if (desc$type == "integer") 1L else 0.1
+      shiny::sliderInput(input_id, label,
+                         min = desc$min, max = desc$max,
+                         step = step, value = desc$default)
+    },
+    dropdown = {
+      shiny::selectInput(input_id, label,
+                         choices = desc$choices, selected = desc$default)
+    },
+    checkbox = {
+      shiny::checkboxInput(input_id, label, value = desc$default)
+    },
+    text = {
+      shiny::textInput(input_id, label, value = desc$default)
+    },
+    NULL
+  )
+}
+
+#' Run the Shiny gadget for interactive clean room exploration.
+#' @param fn the user's function
+#' @param descriptors named list of gf_param descriptors
+#' @param resolved_params named list of default values
+#' @param packages package names
+#' @param clean_env the clean execution environment
+#' @param context the clean room context
+run_reproducible_gadget <- function(fn, descriptors, resolved_params,
+                                    packages, clean_env, context) {
+  # Identify interactive params (those with widgets)
+  interactive_params <- Filter(function(d) !is.null(d$widget), descriptors)
+
+  ui <- shiny::fluidPage(
+    shinyjs::useShinyjs(),
+    shiny::tags$head(shiny::tags$style(shiny::HTML("
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+             padding: 0; margin: 0; }
+      .gadget-footer { padding: 10px 15px; border-top: 1px solid #e0e0e0; }
+      .gadget-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+    "))),
+    shiny::sidebarLayout(
+      shiny::sidebarPanel(width = 3,
+        shiny::h5(context$name %||% "Clean Room"),
+        shiny::hr(),
+        lapply(names(interactive_params), function(nm) {
+          param_to_shiny_input(identity, nm, interactive_params[[nm]])
+        })
+      ),
+      shiny::mainPanel(width = 9,
+        shiny::plotOutput("plot", width = "100%", height = "500px"),
+        # Publish status area (loader + watermark/link)
+        shinyjs::hidden(shiny::div(id = "publish-loader",
+          style = "padding: 10px; color: #888;",
+          shiny::icon("spinner", class = "fa-spin"),
+          "Publishing..."
+        )),
+        shiny::div(id = "publish-result",
+          shiny::uiOutput("publish_status")
+        )
+      )
+    ),
+    shiny::div(class = "gadget-footer",
+      shiny::div(class = "gadget-buttons",
+        shiny::actionButton("publish", "Publish",
+                            icon = shiny::icon("cloud-arrow-up"),
+                            class = "btn-primary"),
+        shiny::actionButton("done", "Done", class = "btn-default")
+      )
+    )
+  )
+
+  server <- function(input, output, session) {
+    values <- shiny::reactiveValues(revision = NULL)
+
+    # Build reactive param values from Shiny inputs + static defaults
+    current_params <- shiny::reactive({
+      params <- resolved_params
+      for (nm in names(interactive_params)) {
+        val <- input[[nm]]
+        if (!is.null(val)) {
+          # Preserve integer type for integer sliders
+          if (interactive_params[[nm]]$type == "integer" && is.numeric(val)) {
+            val <- as.integer(val)
+          }
+          params[[nm]] <- val
+        }
+      }
+      params
+    })
+
+    # Helper: build a fresh execution environment with current params
+    build_exec_env <- function(params) {
+      exec_env <- new.env(parent = parent.env(clean_env))
+      for (nm in ls(clean_env, all.names = TRUE)) {
+        exec_env[[nm]] <- clean_env[[nm]]
+      }
+      for (nm in names(params)) {
+        exec_env[[nm]] <- params[[nm]]
+      }
+      exec_env
+    }
+
+    # Re-execute function body on param change, capture plot
+    output$plot <- shiny::renderPlot(res = 120, {
+      params <- current_params()
+      exec_env <- build_exec_env(params)
+
+      # Replace publish() with a no-op that just prints the plot
+      # (we don't want to publish on every param change)
+      exec_env$publish <- function(plot_obj, ...) {
+        print(plot_obj)
+        invisible(plot_obj)
+      }
+
+      # Clear previous publish result when params change
+      values$revision <- NULL
+
+      eval(body(fn), envir = exec_env)
+    })
+
+    # Publish status: show QR code + link after publishing
+    output$publish_status <- shiny::renderUI({
+      rev <- values$revision
+      if (is.null(rev)) return(NULL)
+
+      url <- get_revision_url(rev)
+      gfContainer(
+        shiny::div(style = "margin: 10px;",
+          shiny::tags$a(
+            paste0("View on GoFigr: ",
+                   rev$figure_metadata$name %||% context$name %||% "Figure",
+                   " #", (rev$revision_index %||% 0) + 1),
+            href = url, target = "_blank"
+          )
+        ),
+        shiny::div(style = "margin: 10px;",
+          shiny::HTML(get_qr_png(url))
+        )
+      )
+    })
+
+    # Publish button: execute with real publish()
+    shiny::observeEvent(input$publish, {
+      shinyjs::show("publish-loader")
+      shinyjs::hide("publish-result")
+      shinyjs::disable("publish")
+
+      params <- current_params()
+      exec_env <- build_exec_env(params)
+
+      # Update context with current param values
+      updated_descriptors <- context$descriptors
+      for (nm in names(interactive_params)) {
+        updated_descriptors[[nm]]$default <- params[[nm]]
+      }
+      exec_env$.gf_clean_room_context <- list(
+        source = context$source,
+        name = context$name,
+        manifest = build_manifest(updated_descriptors, packages, list(), context$name),
+        descriptors = updated_descriptors
+      )
+
+      # Capture the revision returned by publish()
+      last_rev <- NULL
+      exec_env$publish <- function(plot_obj, ...) {
+        rev <- gofigR::publish(plot_obj, ...)
+        last_rev <<- rev
+        rev
+      }
+
+      tryCatch({
+        eval(body(fn), envir = exec_env)
+        values$revision <- last_rev
+      }, error = function(e) {
+        shiny::showNotification(paste("Publish failed:", e$message),
+                                type = "error", duration = 5)
+      })
+
+      shinyjs::hide("publish-loader")
+      shinyjs::show("publish-result")
+      shinyjs::enable("publish")
+    })
+
+    # Done button
+    shiny::observeEvent(input$done, {
+      shiny::stopApp()
+    })
+  }
+
+  viewer <- shiny::dialogViewer("Clean Room", width = 1100, height = 700)
+  shiny::runGadget(ui, server, viewer = viewer, stopOnCancel = TRUE)
 }
