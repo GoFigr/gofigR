@@ -235,7 +235,7 @@ apply_watermark <- function(rev_bare, plot_obj, gf_opts, width=NULL, height=NULL
     p <- ggwatermark(qr, plot_obj)
 
     ggsave_args <- create_ggsave_args(watermarked_path, p, width, height, units, dpi)
-    suppressMessages(do.call(ggplot2::ggsave, ggsave_args))
+    suppressWarnings(suppressMessages(do.call(ggplot2::ggsave, ggsave_args)))
 
     return(list(data_object=list(make_image_data("figure", watermarked_path, "png", TRUE)),
                 png_path=watermarked_path))
@@ -404,7 +404,7 @@ save_as_image_file <- function(format, plot_obj, width=NULL, height=NULL, units=
   p <- cowplot::ggdraw() + cowplot::draw_plot(plot_obj)
 
   ggsave_args <- create_ggsave_args(path, p, width, height, units, dpi)
-  suppressMessages(do.call(ggplot2::ggsave, ggsave_args))
+  suppressWarnings(suppressMessages(do.call(ggplot2::ggsave, ggsave_args)))
   return(path)
 }
 
