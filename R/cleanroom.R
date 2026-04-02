@@ -194,6 +194,82 @@ build_clean_room_data <- function(context) {
 }
 
 
+# ---- Parameter validation ----
+
+# Maximum total size of DataFrames allowed in clean room (100 MB, matching Python)
+MAX_CLEAN_ROOM_BYTES <- 100 * 1024 * 1024
+
+#' Check whether a value is serializable for clean room storage.
+#' @param value the value to check
+#' @return TRUE if serializable, FALSE otherwise
+is_serializable <- function(value) {
+  if (is.null(value)) return(TRUE)
+  if (is.data.frame(value)) return(TRUE)
+  if (is.atomic(value)) return(TRUE)  # numeric, character, logical, integer, complex, raw (includes NA)
+  if (is.list(value)) return(all(vapply(value, is_serializable, logical(1))))
+  FALSE
+}
+
+#' Validate that all parameters are serializable for clean room storage.
+#' Returns a list with $valid (logical) and $errors (character vector of messages).
+#' @param descriptors named list of gf_param descriptors
+#' @return list with valid and errors fields
+validate_params <- function(descriptors) {
+  errors <- character(0)
+  for (nm in names(descriptors)) {
+    desc <- descriptors[[nm]]
+    if (!is_serializable(desc$default)) {
+      errors <- c(errors, paste0("Parameter '", nm, "' (class: ",
+                                  paste(class(desc$default), collapse = ", "),
+                                  ") is not serializable. ",
+                                  "Use only atomic values, data.frames, or lists of atomics."))
+    }
+  }
+  list(valid = length(errors) == 0, errors = errors)
+}
+
+#' Check total DataFrame size against MAX_CLEAN_ROOM_BYTES.
+#' Returns a list with $ok (logical) and $total_bytes.
+#' @param descriptors named list of gf_param descriptors
+#' @return list with ok and total_bytes fields
+check_clean_room_size <- function(descriptors) {
+  total <- 0
+  for (nm in names(descriptors)) {
+    desc <- descriptors[[nm]]
+    if (desc$type == "dataframe" && is.data.frame(desc$default)) {
+      total <- total + utils::object.size(desc$default)
+    }
+  }
+  list(ok = total <= MAX_CLEAN_ROOM_BYTES, total_bytes = as.numeric(total))
+}
+
+#' Round-trip parameters through serialization to ensure what the function
+#' sees matches what will be stored. DataFrames go through Parquet;
+#' other values go through JSON.
+#' @param descriptors named list of gf_param descriptors
+#' @return named list of round-tripped default values
+round_trip_params <- function(descriptors) {
+  result <- list()
+  for (nm in names(descriptors)) {
+    desc <- descriptors[[nm]]
+    if (desc$type == "dataframe" && is.data.frame(desc$default)) {
+      # Round-trip through Parquet
+      path <- tempfile(fileext = ".parquet")
+      nanoparquet::write_parquet(desc$default, path)
+      result[[nm]] <- as.data.frame(nanoparquet::read_parquet(path))
+      file.remove(path)
+    } else if (desc$type != "dataframe") {
+      # Round-trip through JSON
+      json <- jsonlite::toJSON(desc$default, auto_unbox = TRUE)
+      result[[nm]] <- jsonlite::fromJSON(as.character(json))
+    } else {
+      result[[nm]] <- desc$default
+    }
+  }
+  result
+}
+
+
 # ---- Source capture ----
 
 capture_function_source <- function(fn) {
@@ -285,6 +361,28 @@ reproducible <- function(fn, packages = character(0), imports = list(), name = N
     }
   }
 
+  # Step 2: Validate parameters
+  validation <- validate_params(descriptors)
+  if (!validation$valid) {
+    warning("Clean room parameter validation failed:\n",
+            paste("  -", validation$errors, collapse = "\n"),
+            "\nRunning without clean room metadata.")
+    return(do.call(fn, resolved_params))
+  }
+
+  # Step 2b: Check DataFrame size limit
+  size_check <- check_clean_room_size(descriptors)
+  if (!size_check$ok) {
+    warning(sprintf(
+      "Total DataFrame size (%.1f MB) exceeds the %.0f MB clean room limit. Running without clean room metadata.",
+      size_check$total_bytes / 1024 / 1024,
+      MAX_CLEAN_ROOM_BYTES / 1024 / 1024))
+    return(do.call(fn, resolved_params))
+  }
+
+  # Step 2c: Round-trip parameters through serialization
+  resolved_params <- round_trip_params(descriptors)
+
   # Step 3: Capture source code
   source_code <- capture_function_source(fn)
 
@@ -324,7 +422,15 @@ reproducible <- function(fn, packages = character(0), imports = list(), name = N
   clean_env$.gf_clean_room_context <- context
 
   # Step 7: Execute -- either interactive gadget or single-shot
-  if (interactive) {
+  # Interactive mode requires a live R session (not knitr/non-interactive).
+  # Degrade gracefully to single-shot execution with a message.
+  use_interactive <- interactive && base::interactive() && !isTRUE(getOption("knitr.in.progress"))
+  if (interactive && !use_interactive) {
+    message("Interactive mode not available in this context (knitr or non-interactive session). ",
+            "Running single-shot execution instead.")
+  }
+
+  if (use_interactive) {
     run_reproducible_gadget(fn, descriptors, resolved_params, packages, clean_env, context,
                             viewer = viewer)
   } else {
@@ -374,6 +480,7 @@ param_to_shiny_input <- function(ns, name, desc) {
 #' @param packages package names
 #' @param clean_env the clean execution environment
 #' @param context the clean room context
+#' @param viewer Shiny viewer function, or NULL for default dialogViewer
 run_reproducible_gadget <- function(fn, descriptors, resolved_params,
                                     packages, clean_env, context,
                                     viewer = NULL) {
@@ -538,7 +645,11 @@ run_reproducible_gadget <- function(fn, descriptors, resolved_params,
   }
 
   if (is.null(viewer)) {
-    viewer <- shiny::dialogViewer("Clean Room", width = 1100, height = 700)
+    if (rstudioapi::isAvailable()) {
+      viewer <- shiny::paneViewer()
+    } else {
+      viewer <- shiny::dialogViewer("Clean Room", width = 1100, height = 700)
+    }
   }
-  shiny::runGadget(ui, server, viewer = viewer, stopOnCancel = TRUE)
+  shiny::runGadget(ui, server, viewer = viewer, stopOnCancel = FALSE)
 }

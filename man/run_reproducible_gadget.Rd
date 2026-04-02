@@ -26,6 +26,8 @@ run_reproducible_gadget(
 \item{clean_env}{the clean execution environment}
 
 \item{context}{the clean room context}
+
+\item{viewer}{Shiny viewer function, or NULL for default dialogViewer}
 }
 \description{
 Run the Shiny gadget for interactive clean room exploration.

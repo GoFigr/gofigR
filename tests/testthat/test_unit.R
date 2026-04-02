@@ -391,3 +391,95 @@ test_that("manifest JSON roundtrips correctly", {
   expect_equal(parsed$parameters$n$widget, "slider")
   expect_equal(parsed$parameters$label$type, "string")
 })
+
+# ---- Clean room: parameter validation ----
+
+test_that("validate_params accepts valid params", {
+  descs <- list(
+    n = slider(10L, min = 1L, max = 50L),
+    label = text_input("hello"),
+    flag = checkbox(TRUE),
+    data = static(iris),
+    values = static(c(1, 2, 3)),
+    nested = static(list(a = 1, b = "two"))
+  )
+  result <- gofigR:::validate_params(descs)
+  expect_true(result$valid)
+  expect_length(result$errors, 0)
+})
+
+test_that("validate_params rejects non-serializable params", {
+  descs <- list(
+    bad = static(lm(Sepal.Length ~ Sepal.Width, data = iris))
+  )
+  result <- gofigR:::validate_params(descs)
+  expect_false(result$valid)
+  expect_true(grepl("not serializable", result$errors[1]))
+})
+
+test_that("validate_params rejects environment params", {
+  descs <- list(bad = static(new.env()))
+  result <- gofigR:::validate_params(descs)
+  expect_false(result$valid)
+})
+
+test_that("validate_params accepts NULL and NA", {
+  descs <- list(
+    a = static(NULL),
+    b = static(NA)
+  )
+  result <- gofigR:::validate_params(descs)
+  expect_true(result$valid)
+})
+
+# ---- Clean room: size limit ----
+
+test_that("check_clean_room_size passes for small data", {
+  descs <- list(data = static(iris))
+  result <- gofigR:::check_clean_room_size(descs)
+  expect_true(result$ok)
+  expect_true(result$total_bytes < gofigR:::MAX_CLEAN_ROOM_BYTES)
+})
+
+test_that("check_clean_room_size counts only DataFrames", {
+  descs <- list(
+    n = slider(10L, min = 1L, max = 50L),
+    label = text_input("hello"),
+    data = static(iris)
+  )
+  result <- gofigR:::check_clean_room_size(descs)
+  expect_true(result$ok)
+  # Should only count iris, not the scalar params
+  expect_true(result$total_bytes > 0)
+})
+
+# ---- Clean room: round-trip serialization ----
+
+test_that("round_trip_params preserves data.frame through Parquet", {
+  descs <- list(data = static(iris))
+  result <- gofigR:::round_trip_params(descs)
+  expect_true(is.data.frame(result$data))
+  expect_equal(nrow(result$data), 150)
+  expect_equal(ncol(result$data), 5)
+  expect_equal(result$data$Sepal.Length, iris$Sepal.Length)
+})
+
+test_that("round_trip_params preserves scalar types through JSON", {
+  descs <- list(
+    n = slider(20L, min = 1L, max = 100L),
+    x = slider(0.5, min = 0, max = 1),
+    label = text_input("hello"),
+    flag = checkbox(TRUE)
+  )
+  result <- gofigR:::round_trip_params(descs)
+  expect_equal(result$n, 20L)
+  expect_equal(result$x, 0.5)
+  expect_equal(result$label, "hello")
+  expect_equal(result$flag, TRUE)
+})
+
+test_that("round_trip_params preserves dropdown value", {
+  descs <- list(color = dropdown("blue", choices = c("red", "blue")))
+  result <- gofigR:::round_trip_params(descs)
+  expect_equal(result$color, "blue")
+})
