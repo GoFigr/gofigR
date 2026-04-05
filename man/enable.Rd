@@ -17,7 +17,7 @@ enable(
   watermark = QR_WATERMARK,
   verbose = FALSE,
   debug = FALSE,
-  auto_assign = FALSE,
+  auto_assign = NULL,
   api_key = NULL,
   url = NULL,
   show = "watermark"

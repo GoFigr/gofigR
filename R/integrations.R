@@ -400,6 +400,19 @@ create_ggsave_args <- function(filename, plot, width=NULL, height=NULL, units="i
 
 
 save_as_image_file <- function(format, plot_obj, width=NULL, height=NULL, units="in", dpi=NULL) {
+  # If no dimensions specified, try to match the current graphics device size
+  # (e.g. the RStudio/Positron plot pane) so published figures match what the user sees
+  if (is.null(width) && is.null(height)) {
+    tryCatch({
+      dev_dim <- dev.size("in")
+      if (all(is.finite(dev_dim)) && all(dev_dim > 0)) {
+        width <- dev_dim[1]
+        height <- dev_dim[2]
+        units <- "in"
+      }
+    }, error = function(e) {})
+  }
+
   path <- tempfile(fileext=paste0(".", format))
   p <- cowplot::ggdraw() + cowplot::draw_plot(plot_obj)
 
@@ -626,6 +639,14 @@ publish <- function(plot_obj,
                                      client_id = client_id, short_id = short_id)
   }
 
+  # Detect clean room context before watermark so the badge can be rendered
+  clean_room_ctx <- get0(".gf_clean_room_context", envir = parent.frame(), inherits = TRUE)
+  is_clean_room <- NULL
+  if (!is.null(clean_room_ctx)) {
+    is_clean_room <- TRUE
+    rev_bare$is_clean_room <- TRUE
+  }
+
   # Now that we have an API ID, apply the watermark
   image_data <- list(make_image_data("figure", png_path, "png", FALSE))
   watermark_data <- apply_watermark(rev_bare, plot_obj, gf_opts, width, height, units, dpi)
@@ -642,13 +663,10 @@ publish <- function(plot_obj,
   fig_name <- if(auto_assign) figure_name else fig$name
   other_data <- annotate(rev_bare, plot_obj, fig_name, input_path, input_contents, chunk_code, data)
 
-  # Check for clean room context injected by reproducible()
-  clean_room_ctx <- get0(".gf_clean_room_context", envir = parent.frame(), inherits = TRUE)
-  is_clean_room <- NULL
+  # Build clean room data objects
   if (!is.null(clean_room_ctx)) {
     clean_room_data <- build_clean_room_data(clean_room_ctx)
     other_data <- append(other_data, clean_room_data)
-    is_clean_room <- TRUE
   }
 
   rev <- gofigR::update_revision_data(client, rev_bare, silent=TRUE,
@@ -698,6 +716,29 @@ cat.gofigr_revision <- function(x, ...) {
 to_ggplot <- function(x, warn = FALSE) {
   if (is_ggplot(x)) {
     return(x)
+  }
+
+  # survminer::ggsurvplot returns a list with $plot and optional $table / $ncensor.plot
+  if (inherits(x, "ggsurvplot")) {
+    components <- list(x$plot)
+    heights <- c(1)
+
+    if (!is.null(x$table)) {
+      table_height <- if (!is.null(x$table.height)) x$table.height else 0.25
+      components <- append(components, list(x$table))
+      heights[1] <- heights[1] - table_height
+      heights <- c(heights, table_height)
+    }
+
+    if (!is.null(x$ncensor.plot)) {
+      ncensor_height <- if (!is.null(x$ncensor.plot.height)) x$ncensor.plot.height else 0.25
+      components <- append(components, list(x$ncensor.plot))
+      heights[1] <- heights[1] - ncensor_height
+      heights <- c(heights, ncensor_height)
+    }
+
+    if (length(components) == 1) return(components[[1]])
+    return(cowplot::plot_grid(plotlist = components, ncol = 1, rel_heights = heights))
   }
 
   converted <- NULL
@@ -888,7 +929,7 @@ enable <- function(auto_publish=FALSE,
                    watermark=QR_WATERMARK,
                    verbose=FALSE,
                    debug=FALSE,
-                   auto_assign=FALSE,
+                   auto_assign=NULL,
                    api_key=NULL,
                    url=NULL,
                    show="watermark") {
@@ -897,7 +938,6 @@ enable <- function(auto_publish=FALSE,
   context <- get_execution_context()
   if(is.null(analysis_name) && !is.null(context$input_path)) {
     analysis_name <- basename(context$input_path)
-    message(paste0("Analysis name: ", analysis_name))
   }
 
   # Create the GoFigr client
@@ -905,6 +945,12 @@ enable <- function(auto_publish=FALSE,
                       verbose = verbose,
                       api_key = api_key,
                       url = url)
+
+  # Resolve auto_assign from config if not explicitly set
+  if(is.null(auto_assign)) {
+    config <- read_config()
+    auto_assign <- isTRUE(config$auto_assign)
+  }
 
   # Find the workspace
   if(!is.null(workspace)) {
@@ -917,6 +963,8 @@ enable <- function(auto_publish=FALSE,
     gf$workspace <- worx$api_id
   } else if(is.null(gf$workspace)) {
     stop("Please specify either workspace (API ID), or workspace_name")
+  } else {
+    worx <- gofigR::get_workspace(gf, gf$workspace)
   }
 
   # Find the analysis
@@ -967,6 +1015,12 @@ enable <- function(auto_publish=FALSE,
   if(auto_publish) {
     intercept_base()
   }
+
+  # Print startup summary
+  message(paste0("\033[1mGoFigr active\033[22m. ",
+                 "Workspace: ", worx$name, ". ",
+                 "Analysis: ", ana$name, ". ",
+                 "Auto-publish: ", auto_publish, "."))
 
   return(invisible(get_options()))
 }
