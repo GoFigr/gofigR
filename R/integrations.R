@@ -93,9 +93,56 @@ get_options <- function() {
   key <- get_rstudio_file_path()
   if(is.null(key)) {
     return(runtime_options$gofigr_options)
-  } else {
-    return(runtime_options$gofigr_options[[key]])
   }
+
+  opts <- runtime_options$gofigr_options[[key]]
+  if (!is.null(opts)) return(opts)
+
+  # Fallback: if exactly one session exists, use it
+  all_opts <- runtime_options$gofigr_options
+  if (is.list(all_opts) && length(all_opts) == 1) {
+    warning(paste0("GoFigr is not configured for ", basename(key),
+                   ". Using session from ", basename(names(all_opts)[1]),
+                   ". Call gofigR::enable() to configure a separate session for this file."))
+    return(all_opts[[1]])
+  }
+
+  return(NULL)
+}
+
+#' Lists all active GoFigr sessions.
+#'
+#' @param pretty if TRUE (default), returns a data frame summary;
+#'   if FALSE, returns the raw named list of session option environments
+#'
+#' @return data frame or named list of sessions
+#' @export
+list_sessions <- function(pretty = TRUE) {
+  opts <- runtime_options$gofigr_options
+  if (is.null(opts)) opts <- list()
+  else if (is.environment(opts)) opts <- list(global = opts)
+
+  if (!pretty) return(opts)
+
+  if (length(opts) == 0) {
+    return(data.frame(file = character(), workspace = character(),
+                      analysis = character(), stringsAsFactors = FALSE))
+  }
+
+  df <- data.frame(
+    file = names(opts),
+    workspace = vapply(opts, function(o) {
+      if (!is.null(o$workspace_obj)) o$workspace_obj$name
+      else if (!is.null(o$workspace)) o$workspace
+      else NA_character_
+    }, character(1)),
+    analysis = vapply(opts, function(o) {
+      if (!is.null(o$analysis)) o$analysis$name else NA_character_
+    }, character(1)),
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+  return(df)
 }
 
 #' Gets the currently configured GoFigr client
@@ -138,8 +185,16 @@ get_title <- function(p) {
   }
 }
 
+gf_print_url <- function(url, label = url) {
+  if (isTRUE(getOption("knitr.in.progress"))) {
+    cat(paste0(label, "\n"))
+  } else {
+    message(label)
+  }
+}
+
 print_revision <- function(rev, ...) {
-  message(paste0(get_revision_url(rev), "\n"))
+  gf_print_url(get_revision_url(rev))
 }
 
 
@@ -322,14 +377,45 @@ annotate <- function(rev_bare, plot_obj, figure_name,
 
   data <- list(make_text_data("sessionInfo", paste0(info, collapse="\n")))
 
-  # Plot object as RDS file
-  if(!is.null(plot_obj)) {
-    data <- append(data, list(capture_rds(plot_obj,
-                             paste0(default_if_null(figure_name, "plot_object"), ".RDS"))))
+  # Resolve data: explicit data= takes priority, then auto-extract from ggplot
+  capture_df <- NULL
+  capture_other <- NULL
+
+  if (!is.null(custom_data)) {
+    if (is.data.frame(custom_data) || is.matrix(custom_data)) {
+      capture_df <- if (is.matrix(custom_data)) as.data.frame(custom_data) else custom_data
+    } else {
+      capture_other <- custom_data
+    }
+  } else if (is_ggplot(plot_obj) && is.data.frame(plot_obj$data) && nrow(plot_obj$data) > 0) {
+    capture_df <- plot_obj$data
   }
 
-  if(!is.null(custom_data)) {
-    data <- append(data, list(capture_rds(custom_data, "data.RDS")))
+  # Capture data frame as parquet with size guard
+  if (!is.null(capture_df)) {
+    df_size <- as.numeric(utils::object.size(capture_df))
+    if (df_size > 100 * 1024 * 1024) {
+      warning("Data frame too large to capture (", round(df_size / 1024 / 1024, 1),
+              " MB, limit 100 MB). Skipping. Contact support@gofigr.io for assistance.")
+    } else {
+      tryCatch({
+        parquet_path <- tempfile(fileext = ".parquet")
+        nanoparquet::write_parquet(capture_df, parquet_path)
+        parquet_bytes <- readBin(parquet_path, "raw", file.info(parquet_path)$size)
+        file.remove(parquet_path)
+        data <- append(data, list(make_raw_data("data", DATA_TYPES$data_frame,
+                                                metadata = list(format = "parquet"),
+                                                data = parquet_bytes)))
+      }, error = function(e) {
+        warning("Could not serialize data frame to Parquet: ", conditionMessage(e),
+                ". Skipping data capture.")
+      })
+    }
+  }
+
+  # Capture non-data-frame objects as RDS
+  if (!is.null(capture_other)) {
+    data <- append(data, list(capture_rds(capture_other, "data.RDS")))
   }
 
   if(!is.null(chunk_code)) {
@@ -404,7 +490,7 @@ save_as_image_file <- function(format, plot_obj, width=NULL, height=NULL, units=
   # (e.g. the RStudio/Positron plot pane) so published figures match what the user sees
   if (is.null(width) && is.null(height)) {
     tryCatch({
-      dev_dim <- dev.size("in")
+      dev_dim <- grDevices::dev.size("in")
       if (all(is.finite(dev_dim)) && all(dev_dim > 0)) {
         width <- dev_dim[1]
         height <- dev_dim[2]
@@ -418,13 +504,15 @@ save_as_image_file <- function(format, plot_obj, width=NULL, height=NULL, units=
 
   ggsave_args <- create_ggsave_args(path, p, width, height, units, dpi)
   suppressWarnings(suppressMessages(do.call(ggplot2::ggsave, ggsave_args)))
-  return(path)
+
+  # Return path and resolved dimensions so callers can persist them in metadata
+  return(list(path=path, width=width, height=height, units=units, dpi=dpi))
 }
 
 save_as_image <- function(format, plot_obj, width=NULL, height=NULL, units="in", dpi=NULL) {
-  path <- save_as_image_file(format, plot_obj, width, height, units, dpi)
-  img_obj <- make_image_data("figure", path, format, FALSE)
-  file.remove(path)
+  result <- save_as_image_file(format, plot_obj, width, height, units, dpi)
+  img_obj <- make_image_data("figure", result$path, format, FALSE)
+  file.remove(result$path)
   return(img_obj)
 }
 
@@ -614,7 +702,8 @@ publish <- function(plot_obj,
 
   client <- gf_opts$client
 
-  png_path <- save_as_image_file("png", plot_obj, width, height, units, dpi)
+  png_result <- save_as_image_file("png", plot_obj, width, height, units, dpi)
+  png_path <- png_result$path
   if(!file.exists(png_path)) {
     if(gf_opts$verbose) {
       warning("No output to publish\n")
@@ -648,7 +737,14 @@ publish <- function(plot_obj,
   }
 
   # Now that we have an API ID, apply the watermark
-  image_data <- list(make_image_data("figure", png_path, "png", FALSE))
+  # Store resolved plot dimensions so clean room can match them when re-rendering
+  plot_dims <- list()
+  if (!is.null(png_result$width)) plot_dims$width <- png_result$width
+  if (!is.null(png_result$height)) plot_dims$height <- png_result$height
+  if (!is.null(png_result$units)) plot_dims$units <- png_result$units
+  if (!is.null(png_result$dpi)) plot_dims$dpi <- png_result$dpi
+  image_data <- list(make_image_data("figure", png_path, "png", FALSE,
+                                     metadata=list(plot_dimensions=plot_dims)))
   watermark_data <- apply_watermark(rev_bare, plot_obj, gf_opts, width, height, units, dpi)
   if(!is.null(watermark_data)) {
     image_data <- append(image_data, watermark_data$data_object)
@@ -675,10 +771,6 @@ publish <- function(plot_obj,
                                       is_clean_room=is_clean_room)
   file.remove(png_path)
 
-  if(gf_opts$verbose) {
-    message(paste0("Published at ", get_revision_url(rev), "\n"))
-  }
-
   debug_message(paste0("Ending publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
 
   if(show) {
@@ -688,7 +780,9 @@ publish <- function(plot_obj,
   class(rev) <- "gofigr_revision"
   rev$client <- gf_opts$client
 
-  return(rev)
+  gf_print_url(get_revision_url(rev), paste0("Published at ", get_revision_url(rev)))
+
+  return(invisible(rev))
 }
 
 #' Default print method for GoFigr revisions.
@@ -796,8 +890,10 @@ intercept_base <- function(env=.GlobalEnv) {
 sync_file <- function(path) {
   if(check_configured()) {
     opts <- get_options()
-    asset_rev <- sync_workspace_asset(opts$client, opts$workspace, path)
-    message(paste0("Asset synced: ", APP_URL, "/asset_revision/", asset_rev$api_id))
+    asset_rev <- sync_workspace_asset(opts$client, opts$workspace, path,
+                                       analysis_id=get_api_id(opts$analysis))
+    asset_url <- paste0(get_app_url(get_options()$client), "/asset_revision/", asset_rev$api_id)
+    gf_print_url(asset_url, paste0("Asset synced: ", asset_url))
     opts$assets[[get_api_id(asset_rev)]] <- asset_rev
   }
   return(path)
@@ -999,6 +1095,7 @@ enable <- function(auto_publish=FALSE,
     client <- gf
     analysis <- ana
     workspace <- gf$workspace
+    workspace_obj <- worx
     watermark <- watermark
     verbose <- verbose
     debug <- debug
