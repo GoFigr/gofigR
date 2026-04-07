@@ -4,10 +4,12 @@
 \alias{gfconfig}
 \title{Interactive configuration helper for the GoFigr R client.}
 \usage{
-gfconfig(max_attempts = 3)
+gfconfig(url = NULL, max_attempts = 3)
 }
 \arguments{
-\item{max_attempts}{Maximum number of password/API key attempts before
+\item{url}{API URL. Default: https://api.gofigr.io}
+
+\item{max_attempts}{Maximum number of API key attempts before
 the wizard aborts with an error.}
 }
 \value{
@@ -15,8 +17,9 @@ Invisibly returns `NULL`. The main effect is writing configuration
   to disk and printing progress messages.
 }
 \description{
-Runs a simple text-based wizard that logs into GoFigr, generates or verifies
-an API key, lets the user choose a default workspace, and then writes a
-configuration file to `~/.gofigr`. This configuration is used by
-`gofigr_client()` when explicit credentials are not provided.
+Runs a simple text-based wizard that authenticates via Auth0 Device Code
+flow, generates or verifies an API key, lets the user choose a default
+workspace, and then writes a configuration file to `~/.gofigr`. This
+configuration is used by `gofigr_client()` when explicit credentials
+are not provided.
 }

@@ -4,12 +4,14 @@
 \alias{find_asset_by_name}
 \title{Finds an asset by name}
 \usage{
-find_asset_by_name(gf, name)
+find_asset_by_name(gf, name, analysis = NULL)
 }
 \arguments{
 \item{gf}{GoFigr client}
 
 \item{name}{name of the asset to search for}
+
+\item{analysis}{optional analysis API ID to scope the search}
 }
 \value{
 list of matching assets, or an empty list if none found

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    container:
+      # Use Rocker verse image with R 4.3, LaTeX, and many system dependencies pre-installed
+      # This avoids having to install all the system libraries separately
+      image: rocker/verse:4.3
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure R repositories
+        run: |
+          # Use public RSPM for binary packages
+          echo 'options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' >> ~/.Rprofile
+
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.R/library
+            ~/.R/Microsoft*
+            ~/.R/renv
+          key: ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}
+          restore-keys: |
+            ${{ runner.os }}-r-
+
+      - name: Install missing system dependencies
+        run: |
+          # Rocker verse already has most dependencies, install any missing ones
+          apt-get update -qq && apt-get install -y -qq \
+            libv8-dev \
+            libharfbuzz-dev \
+            libfribidi-dev || true
+
+      - name: Install R dependencies
+        run: |
+          # Use parallel compilation and show only last 50 lines of output to reduce log size
+          Rscript -e "options(Ncpus = parallel::detectCores())" \
+            -e "install.packages(c('remotes', 'roxygen2', 'devtools', 'testthat'), repos = getOption('repos'), quiet = TRUE, Ncpus = parallel::detectCores())" \
+            2>&1 | tail -50
+          # Install all dependencies including Suggests (needed for tests, e.g. torchvision)
+          Rscript -e "options(Ncpus = parallel::detectCores())" \
+            -e "remotes::install_deps(dependencies = c('Depends', 'Imports', 'LinkingTo', 'Suggests'), repos = getOption('repos'), quiet = TRUE, upgrade = 'never', Ncpus = parallel::detectCores())" \
+            2>&1 | tail -50
+
+      - name: Build package (Step 1)
+        run: |
+          bash ./build.sh
+
+      - name: Test (Step 2)
+        run: |
+          bash run_tests.sh
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: gofigR*.tar.gz
+          retention-days: 7
+

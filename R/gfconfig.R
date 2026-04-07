@@ -33,65 +33,128 @@ read_prompt <- function(prompt, validate=NULL, attempt=1, max_attempts=2) {
   }
 }
 
-#' Prompts the user for username and password and logs into GoFigr.
+#' Fetches Auth0 configuration from the server's /info endpoint.
 #'
-#' This function interactively requests credentials, attempts authentication
-#' against the GoFigr API, and retries a limited number of times on failure.
-#' It is primarily used by `gfconfig()` and is not intended for scripted use.
+#' @param api_url Base API URL (e.g. "https://api.gofigr.io")
 #'
-#' @param max_attempts Maximum number of login attempts before giving up.
+#' @return A list with domain, client_id, and audience, or NULL if unavailable.
+get_auth0_config <- function(api_url) {
+  info_url <- paste0(api_url, "/api/", API_VERSION, "/info/")
+  tryCatch({
+    resp <- httr::GET(info_url, httr::timeout(5))
+    if (resp$status_code != 200) return(NULL)
+    data <- jsonlite::fromJSON(rawToChar(resp$content))
+    domain <- data$auth0_domain
+    client_id <- data$auth0_cli_client_id
+    audience <- default_if_null(data$auth0_audience, "")
+    if (is.null(domain) || is.null(client_id) || domain == "" || client_id == "") {
+      return(NULL)
+    }
+    return(list(domain=domain, client_id=client_id, audience=audience))
+  }, error=function(err) {
+    return(NULL)
+  })
+}
+
+#' Authenticates via Auth0 Device Authorization Flow.
 #'
-#' @return A configured GoFigr client object authenticated with username
-#'   and password.
-login_with_username <- function(max_attempts) {
-  connection_ok <- FALSE
-  attempt <- 0
-  while(!connection_ok && attempt < max_attempts) {
-    username <- read_prompt("Username: ")
-    password <- getPass::getPass("Password: ")
+#' Requests a device code, displays the verification URL, optionally opens
+#' the browser, and polls for authorization. Returns a GoFigr client
+#' authenticated with the Auth0 access token.
+#'
+#' @param api_url Base API URL
+#' @param auth0_config Auth0 configuration from get_auth0_config()
+#' @param max_attempts Not used (kept for API consistency)
+#'
+#' @return A configured GoFigr client authenticated with an Auth0 token.
+login_with_device_flow <- function(api_url, auth0_config, max_attempts=3) {
+  device_url <- paste0("https://", auth0_config$domain, "/oauth/device/code")
+  resp <- httr::POST(device_url,
+                     body=jsonlite::toJSON(list(
+                       client_id=auth0_config$client_id,
+                       audience=auth0_config$audience,
+                       scope="openid email profile"
+                     ), auto_unbox=TRUE),
+                     httr::content_type_json(),
+                     httr::timeout(10))
 
-    message("Testing connection...\n")
-
-    tryCatch({
-      gf <- gofigr_client(username=username,
-                          password=password,
-                          ignore_config=TRUE)
-      info <- user_info(gf) # Make an authenticated request
-
-      if(!is.null(info$username)) {
-        message("  => Success\n")
-        connection_ok <- TRUE
-      } else {
-        stop("Unknown error occurred.")
-      }
-    }, error=function(err) {
-      message(paste0(err, "\n"))
-      message("Connection failed. Please verify your username & password and try again.\n\n")
-      attempt <<- attempt + 1
-    })
+  if (resp$status_code != 200) {
+    data <- tryCatch(jsonlite::fromJSON(rawToChar(resp$content)), error=function(e) list())
+    detail <- default_if_null(data$error_description, rawToChar(resp$content))
+    stop(paste0("Failed to start device authorization (HTTP ", resp$status_code, "): ", detail))
   }
 
-  if(!connection_ok) {
-    stop(paste0("Connection failed after ", max_attempts, " attempts"))
-  }
+  data <- jsonlite::fromJSON(rawToChar(resp$content))
+  verification_uri <- default_if_null(data$verification_uri_complete, data$verification_uri)
+  user_code <- data$user_code
+  device_code <- data$device_code
+  interval <- default_if_null(data$interval, 5)
 
-  return(gf)
+  message("\n  To log in, open this URL in your browser:\n")
+  message(paste0("    ", verification_uri, "\n"))
+  message(paste0("  And enter code: ", user_code, "\n"))
+
+  tryCatch({
+    utils::browseURL(verification_uri)
+    message("  (Browser opened automatically)\n")
+  }, error=function(e) {})
+
+  message("  Waiting for authorization...")
+
+  token_url <- paste0("https://", auth0_config$domain, "/oauth/token")
+  while (TRUE) {
+    Sys.sleep(interval)
+    token_resp <- httr::POST(token_url,
+                             body=jsonlite::toJSON(list(
+                               grant_type="urn:ietf:params:oauth:grant-type:device_code",
+                               client_id=auth0_config$client_id,
+                               device_code=device_code
+                             ), auto_unbox=TRUE),
+                             httr::content_type_json(),
+                             httr::timeout(10))
+
+    token_data <- jsonlite::fromJSON(rawToChar(token_resp$content))
+
+    if (token_resp$status_code == 200) {
+      message("  => Authenticated successfully\n")
+      access_token <- token_data$access_token
+
+      gf <- gofigr_client(url=api_url, ignore_config=TRUE)
+      gf$access_token <- access_token
+      return(gf)
+    }
+
+    error <- default_if_null(token_data$error, "")
+    if (error == "authorization_pending") {
+      next
+    } else if (error == "slow_down") {
+      interval <- interval + 1
+      next
+    } else if (error == "expired_token") {
+      stop("Authorization timed out. Please try again.")
+    } else if (error == "access_denied") {
+      stop("Authorization was denied.")
+    } else {
+      detail <- default_if_null(token_data$error_description, error)
+      stop(paste0("Device flow error: ", detail))
+    }
+  }
 }
 
 #' Prompts the user for an API key or interactively creates a new one.
 #'
-#' Given a password-authenticated GoFigr client, this helper either accepts an
+#' Given an authenticated GoFigr client, this helper either accepts an
 #' existing API key entered by the user or creates a new API key via the API.
 #' The newly created key is associated with the authenticated user.
 #'
-#' @param gf Password-authenticated GoFigr client created by `gofigr_client()`.
+#' @param gf Authenticated GoFigr client created by `gofigr_client()`.
 #' @param max_attempts Maximum number of attempts when validating a user-
 #'   supplied API key.
 #'
 #' @return A character string containing a valid API key, either supplied
 #'   by the user or newly created.
 login_with_api_key <- function(gf, max_attempts) {
-  api_key <- read_prompt("API key (leave blank to generate a new one): ",
+  api_key <- read_prompt("Paste an existing API key, or press Enter to generate a new one: ",
                          validate=function(api_key) {
                            api_key <- trimws(api_key)
                            if(api_key == "") {return(api_key)}
@@ -122,25 +185,35 @@ login_with_api_key <- function(gf, max_attempts) {
 
 #' Interactive configuration helper for the GoFigr R client.
 #'
-#' Runs a simple text-based wizard that logs into GoFigr, generates or verifies
-#' an API key, lets the user choose a default workspace, and then writes a
-#' configuration file to `~/.gofigr`. This configuration is used by
-#' `gofigr_client()` when explicit credentials are not provided.
+#' Runs a simple text-based wizard that authenticates via Auth0 Device Code
+#' flow, generates or verifies an API key, lets the user choose a default
+#' workspace, and then writes a configuration file to `~/.gofigr`. This
+#' configuration is used by `gofigr_client()` when explicit credentials
+#' are not provided.
 #'
-#' @param max_attempts Maximum number of password/API key attempts before
+#' @param url API URL. Default: https://api.gofigr.io
+#' @param max_attempts Maximum number of API key attempts before
 #'   the wizard aborts with an error.
 #'
 #' @return Invisibly returns `NULL`. The main effect is writing configuration
 #'   to disk and printing progress messages.
 #' @export
-gfconfig <- function(max_attempts=3) {
+gfconfig <- function(url=NULL, max_attempts=3) {
+  api_url <- default_if_null(url, API_URL)
+
   message("-------------------------------------------------------------------\n")
   message("Welcome to GoFigr! This wizard will help you get up and running.\n")
   message("-------------------------------------------------------------------\n\n")
 
-  gf_pw_auth <- login_with_username(max_attempts)
-  api_key <- login_with_api_key(gf_pw_auth, max_attempts)
-  gf <- gofigr_client(api_key=api_key)
+  auth0_config <- get_auth0_config(api_url)
+  if (is.null(auth0_config)) {
+    stop(paste0("Could not fetch Auth0 configuration from ", api_url, "/api/", API_VERSION, "/info/. ",
+                "Please check the URL and try again."))
+  }
+
+  gf_auth <- login_with_device_flow(api_url, auth0_config, max_attempts)
+  api_key <- login_with_api_key(gf_auth, max_attempts)
+  gf <- gofigr_client(api_key=api_key, url=api_url)
 
   message("Fetching workspaces...\n")
   worxs <- list_workspaces(gf)
@@ -170,7 +243,8 @@ gfconfig <- function(max_attempts=3) {
                          })
 
   config <- list(api_key=api_key,
-                 workspace=worx_id)
+                 workspace=worx_id,
+                 url=api_url)
 
   config_path <- CONFIG_PATH
   fileConn <- file(config_path)

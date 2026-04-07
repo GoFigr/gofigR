@@ -17,14 +17,19 @@ get_asset <- function(gf, api_id) {
 #' @param workspace parent workspace
 #' @param name name of the asset
 #' @param description description of the asset
+#' @param analysis optional analysis API ID to scope the asset under
 #'
 #' @returns asset object
 #' @export
-create_asset <- function(gf, workspace, name, description=NULL) {
+create_asset <- function(gf, workspace, name, description=NULL, analysis=NULL) {
+  payload <- list(workspace=get_api_id(workspace),
+                  name=name,
+                  description=null_to_empty(description))
+  if(!is.null(analysis)) {
+    payload$analysis <- analysis
+  }
   response_to_JSON(gofigr_POST(gf, "asset/",
-                               body=obj_to_JSON(list(workspace=get_api_id(workspace),
-                                                     name=name,
-                                                     description=null_to_empty(description))),
+                               body=obj_to_JSON(payload),
                                httr::content_type_json(),
                                expected_status_code = 201))
 }
@@ -34,12 +39,17 @@ create_asset <- function(gf, workspace, name, description=NULL) {
 #'
 #' @param gf GoFigr client
 #' @param name name of the asset to search for
+#' @param analysis optional analysis API ID to scope the search
 #'
 #' @returns list of matching assets, or an empty list if none found
 #' @export
-find_asset_by_name <- function(gf, name) {
+find_asset_by_name <- function(gf, name, analysis=NULL) {
+  payload <- list(name=name)
+  if(!is.null(analysis)) {
+    payload$analysis <- analysis
+  }
   response_to_JSON(gofigr_POST(gf, "asset/find_by_name/",
-                   body=obj_to_JSON(list(name=name)),
+                   body=obj_to_JSON(payload),
                    httr::content_type_json(),
                    expected_status_code = 200))
 }
@@ -86,19 +96,24 @@ create_asset_revision <- function(gf, asset, metadata=list(), data=NULL) {
 #' @param gf GoFigr client
 #' @param digest hex digest string
 #' @param hash_type digest type
+#' @param analysis optional analysis API ID to scope the search
 #'
 #' @returns list of asset revisions, or empty list
 #' @export
-find_asset_revision_by_hash <- function(gf, digest, hash_type="blake3") {
+find_asset_revision_by_hash <- function(gf, digest, hash_type="blake3", analysis=NULL) {
   if(is.null(digest)) {
     stop("Digest cannot be null")
   } else if(is.null(hash_type)) {
     stop("Hash type cannot be null")
   }
 
+  payload <- list(digest=digest, hash_type=hash_type)
+  if(!is.null(analysis)) {
+    payload$analysis <- analysis
+  }
+
   response_to_JSON(gofigr_POST(gf, "asset_revision/find_by_hash/",
-                               body=obj_to_JSON(list(digest=digest,
-                                                     hash_type=hash_type)),
+                               body=obj_to_JSON(payload),
                                httr::content_type_json(),
                                expected_status_code = 200))
 }
@@ -119,15 +134,16 @@ calc_checksum <- function(path) {
 #' @param gf GoFigr client
 #' @param workspace_id parent workspace in case we have to create a brand new asset
 #' @param path path to file
+#' @param analysis_id optional analysis API ID to scope the asset under
 #'
 #' @returns asset revision object
-new_asset_revision_from_file <- function(gf, workspace_id, path) {
+new_asset_revision_from_file <- function(gf, workspace_id, path, analysis_id=NULL) {
   # Find existing assets to create this revision under
   name <- basename(path)
-  assets <- find_asset_by_name(gf, name)
+  assets <- find_asset_by_name(gf, name, analysis=analysis_id)
 
   if(length(assets) == 0) {
-    parent_asset <- create_asset(gf, workspace_id, name)
+    parent_asset <- create_asset(gf, workspace_id, name, analysis=analysis_id)
   } else if(length(assets) == 1) {
     parent_asset <- assets[[1]]
   } else {
@@ -153,17 +169,18 @@ new_asset_revision_from_file <- function(gf, workspace_id, path) {
 #' @param gf GoFigr client
 #' @param workspace_id parent workspace in case we have to create a brand new asset
 #' @param path path to file
+#' @param analysis_id optional analysis API ID to scope the asset under
 #'
 #' @returns asset revision object
 #' @export
-sync_workspace_asset <- function(gf, workspace_id, path) {
+sync_workspace_asset <- function(gf, workspace_id, path, analysis_id=NULL) {
   checksum <- calc_checksum(path)
 
   # Find existing asset revisions with this checksum
-  revisions = find_asset_revision_by_hash(gf, checksum)
+  revisions = find_asset_revision_by_hash(gf, checksum, analysis=analysis_id)
 
   if(length(revisions) == 0) {
-    return(new_asset_revision_from_file(gf, workspace_id, path))
+    return(new_asset_revision_from_file(gf, workspace_id, path, analysis_id=analysis_id))
   } else if(length(revisions) == 1) {
     return(revisions[[1]])
   } else {

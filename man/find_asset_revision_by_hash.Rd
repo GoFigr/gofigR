@@ -4,7 +4,7 @@
 \alias{find_asset_revision_by_hash}
 \title{Finds all asset revisions with a matching hash digest}
 \usage{
-find_asset_revision_by_hash(gf, digest, hash_type = "blake3")
+find_asset_revision_by_hash(gf, digest, hash_type = "blake3", analysis = NULL)
 }
 \arguments{
 \item{gf}{GoFigr client}
@@ -12,6 +12,8 @@ find_asset_revision_by_hash(gf, digest, hash_type = "blake3")
 \item{digest}{hex digest string}
 
 \item{hash_type}{digest type}
+
+\item{analysis}{optional analysis API ID to scope the search}
 }
 \value{
 list of asset revisions, or empty list

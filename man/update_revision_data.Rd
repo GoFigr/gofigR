@@ -4,7 +4,14 @@
 \alias{update_revision_data}
 \title{Updates data associated with a figure}
 \usage{
-update_revision_data(gf, revision, new_data, silent = FALSE, assets = list())
+update_revision_data(
+  gf,
+  revision,
+  new_data,
+  silent = FALSE,
+  assets = list(),
+  is_clean_room = NULL
+)
 }
 \arguments{
 \item{gf}{GoFigr client}
@@ -16,6 +23,8 @@ update_revision_data(gf, revision, new_data, silent = FALSE, assets = list())
 \item{silent}{whether to generate an activity. Internal use only.}
 
 \item{assets}{list of asset revision IDs to be assocaited with this revision}
+
+\item{is_clean_room}{if TRUE, marks the revision as a clean room revision}
 }
 \value{
 updated revision

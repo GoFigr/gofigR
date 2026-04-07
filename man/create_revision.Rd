@@ -4,7 +4,14 @@
 \alias{create_revision}
 \title{Creates a new revision}
 \usage{
-create_revision(gf, figure, metadata = list(), data = NULL)
+create_revision(
+  gf,
+  figure,
+  metadata = list(),
+  data = NULL,
+  client_id = NULL,
+  short_id = NULL
+)
 }
 \arguments{
 \item{gf}{GoFigr client}
@@ -14,6 +21,13 @@ create_revision(gf, figure, metadata = list(), data = NULL)
 \item{metadata}{metadata for the revision, as a named list}
 
 \item{data}{list of Data objects}
+
+\item{client_id}{optional client-generated UUID for idempotent creation.
+When provided, the server uses this as the revision's ID and returns
+409 Conflict if a revision with the same client_id already exists.}
+
+\item{short_id}{optional short ID for compact QR codes. Generated via
+\code{\link{reserve_short_id_prefix}} and \code{make_short_id}.}
 }
 \value{
 created revision object

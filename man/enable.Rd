@@ -17,6 +17,7 @@ enable(
   watermark = QR_WATERMARK,
   verbose = FALSE,
   debug = FALSE,
+  auto_assign = NULL,
   api_key = NULL,
   url = NULL,
   show = "watermark"
@@ -48,6 +49,10 @@ that setting this option will re-assign plot() and print() in the global environ
 
 \item{debug}{whether to show debugging information}
 
+\item{auto_assign}{if TRUE, use AI-based auto-assignment of figures instead of
+explicit figure names. Requires AI to be enabled on the server. Can be
+overridden per-call in \code{\link{publish}}.}
+
 \item{api_key}{GoFigr API key}
 
 \item{url}{GoFigr API URL}
@@ -61,4 +66,10 @@ named list of GoFigr options
 }
 \description{
 Enables GoFigr in the current R/Rmd file.
+}
+\note{
+Do not call \code{publish()} from forked child processes
+  (e.g. inside \code{parallel::mclapply} or \code{future::plan(multicore)}).
+  Forks inherit the short ID counter, which can produce duplicate IDs and
+  server-side conflicts. Graphics devices also do not survive forks.
 }

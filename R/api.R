@@ -1,5 +1,5 @@
 API_URL = "https://api.gofigr.io"
-API_VERSION = "v1.2"
+API_VERSION = "v1.4.1"
 
 APP_URL = "https://app.gofigr.io"
 
@@ -306,6 +306,11 @@ gofigr_make_handler <- function(name, method) {
 
     if(gf$anonymous) {
       res <- method(full_url)
+    } else if(!is.null(gf$access_token) && (is.null(gf$username) || gf$username == "")) {
+      # Pre-set access token (e.g. from Auth0 device flow) — no refresh available
+      res <- method(full_url,
+                    httr::add_headers(Authorization = paste0('Bearer ', gf$access_token)),
+                    ...)
     } else if(!is.null(gf$username) && !is.null(gf$password) && gf$username != "" && gf$password != "") {
       # JWT
 
@@ -406,6 +411,22 @@ gofigr_DELETE <- gofigr_make_handler("DELETE", httr::DELETE)
 user_info <- function(gf) {
   response_to_JSON(gofigr_GET(gf, "user/"))[[1]]
 }
+
+#' Returns cached server info from the /info/ endpoint.
+#'
+#' @param gf GoFigr client
+#'
+#' @return named list with server info, or empty list if the call fails
+#' @export
+server_info <- function(gf) {
+  if(is.null(gf$.server_info)) {
+    gf$.server_info <- tryCatch({
+      response_to_JSON(gofigr_GET(gf, "info/"))
+    }, error = function(e) list())
+  }
+  gf$.server_info
+}
+
 
 #' Creates a new API key. This function will only succeed if using password
 #' authentication.

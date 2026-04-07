@@ -51,6 +51,29 @@ stack_horizontally <- function(images) {
 }
 
 
+# Renders a small green shield icon as a magick image on a white background.
+render_shield_icon <- function(size_px) {
+  svg_text <- paste0(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="', size_px, '" height="', size_px, '" ',
+    'viewBox="0 0 24 24" fill="none" stroke="#166534" ',
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">',
+    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
+    '</svg>'
+  )
+  svg_path <- tempfile(fileext = ".svg")
+  writeLines(svg_text, svg_path)
+  raw_img <- magick::image_read_svg(svg_path, width = size_px, height = size_px)
+  file.remove(svg_path)
+
+  # Flatten onto white background to avoid transparency artifacts
+  bg <- magick::image_blank(width = size_px, height = size_px, color = "#ffffff")
+  img <- magick::image_composite(bg, raw_img, operator = "Over")
+  magick::image_destroy(raw_img)
+  magick::image_destroy(bg)
+  return(img)
+}
+
+
 #' Makes a watermark generator. You can use the result with enable(watermark=...).
 #'
 #' @param show_qr show QR code
@@ -85,20 +108,51 @@ watermark_generator <- function(show_qr=TRUE,
         h <- 1080
       }
 
-      qr_size_px <- c(as.integer(w * 0.2), as.integer(w * 0.2))
-      link_size_px <- c(as.integer(w * 0.8), as.integer(h * 0.2))
+      qr_size_px <- c(as.integer(w * 0.1), as.integer(w * 0.1))
+      link_size_px <- c(as.integer(w * 0.9), as.integer(h * 0.2))
       font_size <- as.integer(1.0 * font_size * w / 700)
     }
 
-    url <- file.path(APP_URL, "r", get_api_id(revision))
+    url <- file.path(APP_URL, "r", default_if_null(revision$short_id, get_api_id(revision)))
 
-    # Link
-    mark <- magick::image_blank(width=link_size_px[[1]],
-                                            height=link_size_px[[2]],
-                                            color=link_bg)
-    link_img <- magick::image_annotate(mark, url,
-                                       color=font_color, gravity="Center", font=font,
-                                       size=font_size)
+    # Link with optional clean room shield
+    is_clean <- isTRUE(revision$is_clean_room)
+
+    # Build the inner content: [shield margin] url_text, then center on the link bar
+    shield_size <- as.integer(font_size * 1.4)
+    shield_margin <- as.integer(font_size * 0.4)
+    shield_space <- if (is_clean) shield_size + shield_margin else 0L
+
+    # Create text image, trimmed to actual text width
+    text_img <- magick::image_blank(width = link_size_px[[1]],
+                                     height = link_size_px[[2]],
+                                     color = link_bg)
+    text_img <- magick::image_annotate(text_img, url,
+                                        color = font_color, gravity = "West",
+                                        font = font, size = font_size)
+    text_img <- magick::image_trim(text_img)
+    text_info <- magick::image_info(text_img)
+
+    # Compute centered position for [shield+margin+text] as a unit
+    content_width <- shield_space + text_info$width
+    x_start <- as.integer((link_size_px[[1]] - content_width) / 2)
+
+    link_img <- magick::image_blank(width = link_size_px[[1]],
+                                     height = link_size_px[[2]],
+                                     color = link_bg)
+
+    if (is_clean) {
+      shield <- render_shield_icon(shield_size)
+      shield_y <- as.integer((link_size_px[[2]] - shield_size) / 2)
+      link_img <- magick::image_composite(link_img, shield,
+                                           offset = magick::geometry_point(x_start, shield_y))
+      magick::image_destroy(shield)
+    }
+
+    text_y <- as.integer((link_size_px[[2]] - text_info$height) / 2)
+    link_img <- magick::image_composite(link_img, text_img,
+                                         offset = magick::geometry_point(x_start + shield_space, text_y))
+    magick::image_destroy(text_img)
 
     # QR code
     if(show_qr) {
@@ -110,9 +164,13 @@ watermark_generator <- function(show_qr=TRUE,
                                              height=qr_size_px[[2]]))
       file.remove(svg_path)
 
-      link_img <- stack_horizontally(list(link_img, qr_img))
+      qr_margin <- magick::image_blank(width = qr_size_px[[1]],
+                                        height = qr_size_px[[2]],
+                                        color = "#ffffff")
+      link_img <- stack_horizontally(list(link_img, qr_img, qr_margin))
 
       magick::image_destroy(qr_img)
+      magick::image_destroy(qr_margin)
     }
 
     # Composite
