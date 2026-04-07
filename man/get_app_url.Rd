@@ -3,8 +3,8 @@
 \name{get_app_url}
 \alias{get_app_url}
 \title{Resolves the app (frontend) URL from a GoFigr client's API base URL.
-For localhost API URLs, maps to localhost:5173 (dev server).
-For production, strips the "api." prefix.}
+Used for full app links (asset URLs, "View on GoFigr" links, etc).
+For watermark/QR code URLs, use \code{\link{get_app_short_url}} instead.}
 \usage{
 get_app_url(client = NULL)
 }
@@ -16,6 +16,6 @@ app base URL string
 }
 \description{
 Resolves the app (frontend) URL from a GoFigr client's API base URL.
-For localhost API URLs, maps to localhost:5173 (dev server).
-For production, strips the "api." prefix.
+Used for full app links (asset URLs, "View on GoFigr" links, etc).
+For watermark/QR code URLs, use \code{\link{get_app_short_url}} instead.
 }
