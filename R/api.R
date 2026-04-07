@@ -1,7 +1,24 @@
 API_URL = "https://api.gofigr.io"
 API_VERSION = "v1.4.1"
 
-APP_URL = "https://app.gofigr.io"
+APP_URL = "https://gofigr.io"
+
+#' Resolves the app (frontend) URL from a GoFigr client's API base URL.
+#' For localhost API URLs, maps to localhost:5173 (dev server).
+#' For production, strips the "api." prefix.
+#'
+#' @param client GoFigr client object. If NULL, returns APP_URL.
+#'
+#' @return app base URL string
+#' @export
+get_app_url <- function(client = NULL) {
+  if (is.null(client)) return(APP_URL)
+  base <- client$base_url
+  if (grepl("localhost|127\\.0\\.0\\.1", base)) {
+    return("http://localhost:5173")
+  }
+  gsub("api\\.", "", base)
+}
 
 #' Default path to the config file
 #'
