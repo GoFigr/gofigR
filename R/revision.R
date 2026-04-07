@@ -32,11 +32,7 @@ get_revision_url <- function(rev) {
     return(NULL)
   }
 
-  if("client" %in% names(rev)) {
-    base_url <- gsub("api", "app", rev$client$base_url)
-  } else {
-    base_url <- APP_URL
-  }
+  base_url <- get_app_url(if ("client" %in% names(rev)) rev$client else NULL)
 
   id <- default_if_null(rev$short_id, rev$api_id)
   paste0(base_url, "/r/", id)

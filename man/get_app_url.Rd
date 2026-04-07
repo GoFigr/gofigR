@@ -4,7 +4,7 @@
 \alias{get_app_url}
 \title{Resolves the app (frontend) URL from a GoFigr client's API base URL.
 For localhost API URLs, maps to localhost:5173 (dev server).
-For production, strips "api." prefix.}
+For production, strips the "api." prefix.}
 \usage{
 get_app_url(client = NULL)
 }
@@ -17,5 +17,5 @@ app base URL string
 \description{
 Resolves the app (frontend) URL from a GoFigr client's API base URL.
 For localhost API URLs, maps to localhost:5173 (dev server).
-For production, strips "api." prefix.
+For production, strips the "api." prefix.
 }
