@@ -12,3 +12,7 @@ tmp.*
 .*\.pdf
 ^GDCdata$
 MANIFEST.txt
+^\.gofigr$
+^\.claude$
+^\.github$
+^CLAUDE\.md$
