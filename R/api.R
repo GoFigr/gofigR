@@ -1,11 +1,15 @@
 API_URL = "https://api.gofigr.io"
 API_VERSION = "v1.4.1"
 
-APP_URL = "https://gofigr.io"
+APP_URL = "https://app.gofigr.io"
+
+# Short redirect domain used only for watermark/QR code URLs to keep QR codes
+# small. The bare "gofigr.io/r/{id}" path redirects to the full app URL.
+APP_SHORT_URL = "https://gofigr.io"
 
 #' Resolves the app (frontend) URL from a GoFigr client's API base URL.
-#' For localhost API URLs, maps to localhost:5173 (dev server).
-#' For production, strips the "api." prefix.
+#' Used for full app links (asset URLs, "View on GoFigr" links, etc).
+#' For watermark/QR code URLs, use \code{\link{get_app_short_url}} instead.
 #'
 #' @param client GoFigr client object. If NULL, returns APP_URL.
 #'
@@ -13,6 +17,23 @@ APP_URL = "https://gofigr.io"
 #' @export
 get_app_url <- function(client = NULL) {
   if (is.null(client)) return(APP_URL)
+  base <- client$base_url
+  if (grepl("localhost|127\\.0\\.0\\.1", base)) {
+    return("http://localhost:5173")
+  }
+  gsub("api\\.", "app.", base)
+}
+
+#' Resolves the short-redirect URL used for watermark/QR code links.
+#' Returns the bare "gofigr.io" domain (without app. prefix) so the
+#' resulting URLs and QR codes are as compact as possible.
+#'
+#' @param client GoFigr client object. If NULL, returns APP_SHORT_URL.
+#'
+#' @return short app base URL string
+#' @export
+get_app_short_url <- function(client = NULL) {
+  if (is.null(client)) return(APP_SHORT_URL)
   base <- client$base_url
   if (grepl("localhost|127\\.0\\.0\\.1", base)) {
     return("http://localhost:5173")
