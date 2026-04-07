@@ -8,10 +8,8 @@ library(gofigR)
 library(ggplot2)
 
 knitr::opts_chunk$set(echo = TRUE)
-gofigR::enable(url="http://localhost:9090",
-               workspace_name="Scratchpad",
-               analysis_name="Clean room in R",
-               api_key="49cb3c49129a13d74908cbe631c47c673b3753191e71a3147ddbf48e611b3d51")
+gofigR::enable(workspace_name="Scratchpad",
+               analysis_name="Clean room in R")
 ```
 
 ## Clean Room: Interactive Reproducibility

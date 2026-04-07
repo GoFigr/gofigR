@@ -32,9 +32,7 @@ knitr::opts_chunk$set(
 
 # Enable gofigR for this analysis
 gofigR::enable(TRUE, analysis_name = "TCGA-LUAD IDE Submission",
-               workspace_name = "Demos",
-               url="http://localhost:8000",
-               api_key="57175fb3b927d862adf1d2f058dabe64fd970aa228695381618354bd58eb8bb3")
+               workspace_name = "Demos")
 ```
 
 ## IMPORTANT DISCLAIMER

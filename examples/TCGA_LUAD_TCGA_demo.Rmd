@@ -16,9 +16,7 @@ library(ggplotify)
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 # Enable gofigR for this analysis. You can optionally pass an explicit analysis name.
-gofigR::enable(TRUE, analysis_name = "TCGA-LUAD demo",
-               api_url="http://localhost:8000",
-               api_key="57175fb3b927d862adf1d2f058dabe64fd970aa228695381618354bd58eb8bb3")
+gofigR::enable(TRUE, analysis_name = "TCGA-LUAD demo")
 ```
 
 ## Introduction
