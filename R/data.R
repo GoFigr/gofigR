@@ -1,3 +1,27 @@
+#' Reads a file as raw bytes without any decompression. Unlike
+#' \code{readr::read_file_raw}, this preserves the on-disk byte
+#' representation of gzip-compressed files such as RDS, which is required
+#' for content-addressable hashing to match what the server stores.
+#'
+#' @param file_or_con a file path (character) or an open binary connection
+#'
+#' @return raw vector with the file's bytes
+#' @keywords internal
+read_raw_bytes <- function(file_or_con) {
+  if(is.character(file_or_con)) {
+    return(readBin(file_or_con, what="raw", n=file.info(file_or_con)$size))
+  }
+
+  # Connection: read in chunks until exhausted
+  chunks <- list()
+  repeat {
+    chunk <- readBin(file_or_con, what="raw", n=1024L * 1024L)
+    if(length(chunk) == 0) break
+    chunks[[length(chunks) + 1]] <- chunk
+  }
+  return(do.call(c, chunks))
+}
+
 #' Creates a GoFigr data object which can be attached to revisions.
 #'
 #' @param name name of this data
@@ -83,7 +107,7 @@ make_image_data <- function(name, file_or_raw, format, is_watermarked,
   metadata$is_watermarked <- is_watermarked
 
   if(inherits(file_or_raw, "connection") || is.character(file_or_raw)) {
-    data <- readr::read_file_raw(file_or_raw)
+    data <- read_raw_bytes(file_or_raw)
   } else if(is.raw(file_or_raw)) {
     data <- file_or_raw
   } else {
@@ -123,7 +147,7 @@ make_file_data <- function(name, file_or_raw, path=NULL, metadata=NULL) {
   metadata$path <- path
 
   if(inherits(file_or_raw, "connection") || is.character(file_or_raw)) {
-    data <- readr::read_file_raw(file_or_raw)
+    data <- read_raw_bytes(file_or_raw)
   } else if(is.raw(file_or_raw)) {
     data <- file_or_raw
   } else {

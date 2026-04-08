@@ -16,7 +16,7 @@ get_qr_png <- function(url, xres=400, yres=400, width=100, height=100) {
   plot(qr)
   grDevices::dev.off()
 
-  data <- readr::read_file_raw(path)
+  data <- read_raw_bytes(path)
   datab64 <- base64enc::base64encode(data)
   return(paste0("<img style=\"width: ", width, "px; height: ", height, "px\" src=\"",
                 "data:image/png;base64,",
