@@ -2,20 +2,44 @@
 % Please edit documentation in R/workspace.R
 \name{infer_workspace}
 \alias{infer_workspace}
-\title{Resolve the workspace argument, falling back to the client's default.}
+\title{Resolve the workspace to use, falling back to the client's default.}
 \usage{
-infer_workspace(gf, workspace)
+infer_workspace(
+  gf,
+  workspace = NULL,
+  workspace_name = NULL,
+  create_workspace = FALSE,
+  workspace_description = NULL
+)
 }
 \arguments{
 \item{gf}{GoFigr client.}
 
-\item{workspace}{Optional workspace object or API ID. If `NULL`, the
-client's default workspace is used.}
+\item{workspace}{Optional workspace object or API ID. Takes precedence over
+all other arguments.}
+
+\item{workspace_name}{Optional workspace name to look up (or create, when
+`create_workspace` is `TRUE`).}
+
+\item{create_workspace}{Logical; if `TRUE` and `workspace_name` does not
+match an existing workspace, a new one is created.}
+
+\item{workspace_description}{Optional description used when creating a
+workspace by name.}
 }
 \value{
-A workspace object or API ID suitable for passing to other helpers.
+A workspace API ID suitable for passing to other helpers.
 }
 \description{
-Returns the supplied workspace if present, otherwise the default workspace
-configured on the GoFigr client. Throws an error if neither is available.
+Resolves a concrete workspace in this order of precedence:
+\enumerate{
+  \item the explicit `workspace` argument, if supplied;
+  \item a workspace matched (or created) by `workspace_name`, if supplied;
+  \item the default workspace configured on the GoFigr client;
+  \item the single workspace accessible to the client, when exactly one is
+    visible. This mirrors the Python client and is what scoped API keys
+    (e.g. on compute instances, whose credentials carry no workspace) rely
+    on.
+}
+Throws an error if none of these resolve to a workspace.
 }

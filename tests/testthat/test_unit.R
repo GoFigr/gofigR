@@ -483,3 +483,52 @@ test_that("round_trip_params preserves dropdown value", {
   result <- gofigR:::round_trip_params(descs)
   expect_equal(result$color, "blue")
 })
+
+# infer_workspace() resolution precedence and scoped-key singleton fallback
+
+test_that("infer_workspace returns the explicit workspace argument", {
+  gf <- list(workspace = "default-id")
+  expect_equal(infer_workspace(gf, workspace = "explicit-id"), "explicit-id")
+})
+
+test_that("infer_workspace resolves workspace_name via find_workspace", {
+  local_mocked_bindings(
+    find_workspace = function(gf, name, description = NULL, create = FALSE) {
+      list(api_id = "named-id", name = name)
+    }
+  )
+  gf <- list(workspace = NULL)
+  expect_equal(infer_workspace(gf, workspace_name = "My Workspace"), "named-id")
+})
+
+test_that("infer_workspace falls back to the client default workspace", {
+  gf <- list(workspace = "default-id")
+  expect_equal(infer_workspace(gf), "default-id")
+})
+
+test_that("infer_workspace auto-selects the single accessible workspace (scoped key)", {
+  local_mocked_bindings(
+    list_workspaces = function(gf) list(list(api_id = "only-id", name = "Only"))
+  )
+  gf <- list(workspace = NULL)
+  expect_equal(infer_workspace(gf), "only-id")
+})
+
+test_that("infer_workspace errors when no workspaces are accessible", {
+  local_mocked_bindings(
+    list_workspaces = function(gf) list()
+  )
+  gf <- list(workspace = NULL)
+  expect_error(infer_workspace(gf), "no workspaces are accessible")
+})
+
+test_that("infer_workspace errors when multiple workspaces are accessible and none specified", {
+  local_mocked_bindings(
+    list_workspaces = function(gf) list(
+      list(api_id = "a", name = "A"),
+      list(api_id = "b", name = "B")
+    )
+  )
+  gf <- list(workspace = NULL)
+  expect_error(infer_workspace(gf), "no default workspace available")
+})
