@@ -77,7 +77,9 @@ test_that("annotate_git returns valid structure in a git repo", {
     expect_named(result, c("branch", "hash", "remote_url", "commit_link"),
                  ignore.order = TRUE)
     expect_true(nchar(result$hash) == 40)  # full SHA
-    expect_true(nchar(result$branch) > 0)
+    # branch can legitimately be empty in a detached-HEAD checkout, e.g. CI on a
+    # PR merge commit or any `git checkout <sha>`; only assert it's a string.
+    expect_type(result$branch, "character")
   }
 })
 
