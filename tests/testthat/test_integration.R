@@ -233,6 +233,7 @@ get_model <- function() {
 
 test_that("We correctly capture plots from knitr", {
   skip_on_cran()
+  skip_on_ci()  # needs the torch backend (install_torch()) and live GoFigr credentials
 
   model <- get_model()
 
@@ -296,6 +297,7 @@ replace_in_file <- function(filepath, old_string, new_string) {
 
 test_that("We correctly capture plots from scripts", {
   skip_on_cran()
+  skip_on_ci()  # needs the torch backend (install_torch()) and live GoFigr credentials
 
   model <- get_model()
 
