@@ -304,7 +304,10 @@ annotate_git <- function() {
   tryCatch({
     repo <- git2r::repository(".", discover = TRUE)
     head <- git2r::repository_head(repo)
-    branch <- head$name
+    # In a detached-HEAD checkout (e.g. CI on a PR merge commit, or
+    # `git checkout <sha>`) git reports no branch, so head$name is NULL.
+    # Record an empty string so the metadata always carries a character branch.
+    branch <- if (is.null(head$name)) "" else head$name
     hash <- git2r::sha(head)
     remote <- git2r::remote_url(repo)
 
