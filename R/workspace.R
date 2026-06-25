@@ -93,13 +93,13 @@ find_workspace <- function(gf, name, description=NULL, create=FALSE) {
 #' @export
 infer_workspace <- function(gf, workspace=NULL, workspace_name=NULL,
                             create_workspace=FALSE, workspace_description=NULL) {
-  if(!is.null(workspace)) {
+  if(!is.null(default_if_null(workspace, NULL))) {
     return(workspace)
-  } else if(!is.null(workspace_name)) {
+  } else if(!is.null(default_if_null(workspace_name, NULL))) {
     return(find_workspace(gf, workspace_name,
                           description=workspace_description,
                           create=create_workspace)$api_id)
-  } else if(!is.null(gf$workspace)) {
+  } else if(!is.null(default_if_null(gf$workspace, NULL))) {
     return(gf$workspace)
   }
 
