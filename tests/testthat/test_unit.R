@@ -516,6 +516,25 @@ test_that("infer_workspace auto-selects the single accessible workspace (scoped 
   expect_equal(infer_workspace(gf), "only-id")
 })
 
+test_that("infer_workspace treats a blank client workspace as unset (scoped key)", {
+  # read_config()/gofigr_client() normalize a missing workspace to "" rather
+  # than NULL, so an empty string must fall through to the scoped-key fallback
+  # instead of being returned as the workspace id (which produced workspace//).
+  local_mocked_bindings(
+    list_workspaces = function(gf) list(list(api_id = "only-id", name = "Only"))
+  )
+  gf <- list(workspace = "")
+  expect_equal(infer_workspace(gf), "only-id")
+})
+
+test_that("infer_workspace ignores blank workspace/workspace_name arguments", {
+  local_mocked_bindings(
+    list_workspaces = function(gf) list(list(api_id = "only-id", name = "Only"))
+  )
+  gf <- list(workspace = "")
+  expect_equal(infer_workspace(gf, workspace = "", workspace_name = ""), "only-id")
+})
+
 test_that("infer_workspace errors when no workspaces are accessible", {
   local_mocked_bindings(
     list_workspaces = function(gf) list()
