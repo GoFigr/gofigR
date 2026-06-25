@@ -304,7 +304,10 @@ annotate_git <- function() {
   tryCatch({
     repo <- git2r::repository(".", discover = TRUE)
     head <- git2r::repository_head(repo)
-    branch <- head$name
+    # In a detached-HEAD checkout (e.g. CI on a PR merge commit, or
+    # `git checkout <sha>`) git reports no branch, so head$name is NULL.
+    # Record an empty string so the metadata always carries a character branch.
+    branch <- if (is.null(head$name)) "" else head$name
     hash <- git2r::sha(head)
     remote <- git2r::remote_url(repo)
 
@@ -1048,20 +1051,15 @@ enable <- function(auto_publish=FALSE,
     auto_assign <- isTRUE(config$auto_assign)
   }
 
-  # Find the workspace
-  if(!is.null(workspace)) {
-    worx <- gofigR::get_workspace(gf, workspace) # confirm it exists
-    gf$workspace <- worx$api_id
-  } else if(!is.null(workspace_name)) {
-    worx <- gofigR::find_workspace(gf, workspace_name,
-                                   description = workspace_description,
-                                   create = create_workspace)
-    gf$workspace <- worx$api_id
-  } else if(is.null(gf$workspace)) {
-    stop("Please specify either workspace (API ID), or workspace_name")
-  } else {
-    worx <- gofigR::get_workspace(gf, gf$workspace)
-  }
+  # Find the workspace. infer_workspace() handles explicit IDs, lookup by name,
+  # the client default, and auto-selecting the single workspace accessible to a
+  # scoped API key (e.g. on compute instances, whose credentials carry no
+  # workspace).
+  worx <- gofigR::get_workspace(gf, infer_workspace(gf, workspace,
+                                                    workspace_name = workspace_name,
+                                                    create_workspace = create_workspace,
+                                                    workspace_description = workspace_description))
+  gf$workspace <- worx$api_id
 
   # Find the analysis
   if(!is.null(analysis_api_id)) {

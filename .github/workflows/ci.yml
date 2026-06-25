@@ -19,6 +19,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Mark workspace as a safe git directory
+        # The repo is checked out as a different UID than the container user,
+        # so git 2.34+ refuses to operate on it ("dubious ownership"). build.sh
+        # runs `git add man/*Rd`, which fails with exit 128 without this.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Configure R repositories
         run: |
           # Use public RSPM for binary packages

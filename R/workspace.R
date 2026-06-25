@@ -65,24 +65,54 @@ find_workspace <- function(gf, name, description=NULL, create=FALSE) {
 }
 
 
-#' Resolve the workspace argument, falling back to the client's default.
+#' Resolve the workspace to use, falling back to the client's default.
 #'
-#' Returns the supplied workspace if present, otherwise the default workspace
-#' configured on the GoFigr client. Throws an error if neither is available.
+#' Resolves a concrete workspace in this order of precedence:
+#' \enumerate{
+#'   \item the explicit `workspace` argument, if supplied;
+#'   \item a workspace matched (or created) by `workspace_name`, if supplied;
+#'   \item the default workspace configured on the GoFigr client;
+#'   \item the single workspace accessible to the client, when exactly one is
+#'     visible. This mirrors the Python client and is what scoped API keys
+#'     (e.g. on compute instances, whose credentials carry no workspace) rely
+#'     on.
+#' }
+#' Throws an error if none of these resolve to a workspace.
 #'
 #' @param gf GoFigr client.
-#' @param workspace Optional workspace object or API ID. If `NULL`, the
-#'   client's default workspace is used.
+#' @param workspace Optional workspace object or API ID. Takes precedence over
+#'   all other arguments.
+#' @param workspace_name Optional workspace name to look up (or create, when
+#'   `create_workspace` is `TRUE`).
+#' @param create_workspace Logical; if `TRUE` and `workspace_name` does not
+#'   match an existing workspace, a new one is created.
+#' @param workspace_description Optional description used when creating a
+#'   workspace by name.
 #'
-#' @return A workspace object or API ID suitable for passing to other helpers.
+#' @return A workspace API ID suitable for passing to other helpers.
 #' @export
-infer_workspace <- function(gf, workspace) {
+infer_workspace <- function(gf, workspace=NULL, workspace_name=NULL,
+                            create_workspace=FALSE, workspace_description=NULL) {
   if(!is.null(workspace)) {
     return(workspace)
-  }
-  else if(!is.null(gf$workspace)) {
+  } else if(!is.null(workspace_name)) {
+    return(find_workspace(gf, workspace_name,
+                          description=workspace_description,
+                          create=create_workspace)$api_id)
+  } else if(!is.null(gf$workspace)) {
     return(gf$workspace)
+  }
+
+  # No workspace specified: fall back to the single accessible workspace. This
+  # is the scoped-API-key case (e.g. compute instances), where the server
+  # resolves the key to exactly one workspace.
+  available <- list_workspaces(gf)
+  if(length(available) == 1) {
+    return(available[[1]]$api_id)
+  } else if(length(available) == 0) {
+    stop("Workspace not specified and no workspaces are accessible to this API key.")
   } else {
-    stop("Workspace not specified and no default workspace available.")
+    stop("Workspace not specified and no default workspace available. ",
+         "Please specify either workspace (API ID) or workspace_name.")
   }
 }
