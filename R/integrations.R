@@ -259,6 +259,16 @@ build_metadata <- function(input_path, metadata) {
     total_metadata$git <- git_info
   }
 
+  # Session-wide extra metadata, e.g. set by the GoFigr canvas before each
+  # cell runs: options(gofigR.metadata=list(cell_id=..., notebook_id=...)).
+  # Explicit per-call metadata below takes precedence.
+  extra <- getOption("gofigR.metadata")
+  if(is.list(extra)) {
+    for(name in names(extra)) {
+      total_metadata[[name]] <- extra[[name]]
+    }
+  }
+
   for(name in names(metadata)) {
     if("knitr_strict_list" %in% class(metadata[[name]])) {
       total_metadata[[name]] <- do.call(list, metadata[[name]])

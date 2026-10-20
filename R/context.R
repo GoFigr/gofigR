@@ -27,6 +27,11 @@ get_interactive_context <- function() {
               metadata=list(context="interactive")))
 }
 
+#' TRUE when running inside a Jupyter kernel (IRkernel).
+is_jupyter <- function() {
+  "IRkernel" %in% loadedNamespaces()
+}
+
 #' Gets the execution context: input path, chunk code, and other metadata.
 #'
 #' @returns named list with the execution context.
@@ -42,6 +47,13 @@ get_execution_context <- function() {
                 chunk_code=paste0(options$code, collapse="\n"),
                 metadata=list(context='knitr',
                               knitr_options=options)))
+  } else if(is_jupyter()) {
+    # Running in a Jupyter kernel (IRkernel). The kernel has no source file
+    # and the cell code is not exposed to R; the GoFigr canvas identifies
+    # the cell through options(gofigR.metadata), see build_metadata().
+    return(list(input_path=NULL,
+                chunk_code=NULL,
+                metadata=list(context='jupyter')))
   } else if(!interactive()) {
     # Running in a script
     return(list(input_path=scriptName::current_filename(),
