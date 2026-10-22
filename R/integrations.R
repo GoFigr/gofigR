@@ -782,18 +782,30 @@ publish <- function(plot_obj,
                                       new_data=append(image_data, other_data),
                                       assets=unname(gf_opts$assets),
                                       is_clean_room=is_clean_room)
-  file.remove(png_path)
 
   debug_message(paste0("Ending publish. Devices: ", paste0(names(grDevices::dev.list()), collapse=", ")))
-
-  if(show) {
-    display(rev, plot_obj)
-  }
 
   class(rev) <- "gofigr_revision"
   rev$client <- gf_opts$client
 
-  gf_print_url(get_revision_url(rev), paste0("Published at ", get_revision_url(rev)))
+  # In Jupyter the figure is shown as one rich output (image + widget +
+  # the GoFigr mime type) rather than drawn on the kernel's device, which
+  # would re-enter the auto-publish hooks. Elsewhere it is plotted.
+  shown_in_jupyter <- FALSE
+  watermarked_path <- if(!is.null(watermark_data)) watermark_data$png_path else NULL
+  if(show && is_jupyter()) {
+    shown_in_jupyter <- jupyter_display_revision(rev, fig_name, png_path, watermarked_path, image_formats)
+  } else if(show) {
+    display(rev, plot_obj)
+  }
+  file.remove(png_path)
+  if(!is.null(watermarked_path) && file.exists(watermarked_path)) {
+    file.remove(watermarked_path)
+  }
+
+  if(!shown_in_jupyter) {
+    gf_print_url(get_revision_url(rev), paste0("Published at ", get_revision_url(rev)))
+  }
 
   return(invisible(rev))
 }
@@ -997,8 +1009,10 @@ read.xlsx <- wrap_reader(openxlsx::read.xlsx)
 
 #' Enables GoFigr in the current R/Rmd file.
 #'
-#' @param auto_publish will publish all plots automatically if TRUE. Note
-#'  that setting this option will re-assign plot() and print() in the global environment.
+#' @param auto_publish will publish all plots automatically if TRUE. In a
+#'  Jupyter notebook (IRkernel) this hooks the kernel's display, so every plot
+#'  a cell shows is published. Elsewhere it re-assigns print() in the global
+#'  environment, which is unreliable and deprecated: prefer explicit publish().
 #' @param analysis_api_id Analysis API ID (if analysis_name is NULL)
 #' @param analysis_name Analysis name (if analysis_api_id is NULL)
 #' @param workspace API ID of the workspace
@@ -1109,6 +1123,7 @@ enable <- function(auto_publish=FALSE,
     debug <- debug
     show <- show
     auto_assign <- auto_assign
+    auto_publish <- auto_publish
     assets <- list()
     short_id_prefix <- sid_prefix
     short_id_counter <- 0L
@@ -1118,14 +1133,30 @@ enable <- function(auto_publish=FALSE,
 
   intercept_on()
   if(auto_publish) {
-    intercept_base()
+    if(is_jupyter()) {
+      if(!install_jupyter_hooks()) {
+        auto_publish <- FALSE
+        opts <- get_options()
+        opts$auto_publish <- FALSE
+      }
+    } else {
+      intercept_base()
+    }
   }
 
   # Print startup summary
-  message(paste0("\033[1mGoFigr active\033[22m. ",
-                 "Workspace: ", worx$name, ". ",
-                 "Analysis: ", ana$name, ". ",
-                 "Auto-publish: ", auto_publish, "."))
+  shown <- FALSE
+  if(is_jupyter()) {
+    shown <- jupyter_display_html(startup_widget_html(worx, ana, auto_publish, gf),
+                                  text = paste0("GoFigr active. Workspace: ", worx$name,
+                                                ". Analysis: ", ana$name, "."))
+  }
+  if(!shown) {
+    message(paste0("\033[1mGoFigr active\033[22m. ",
+                   "Workspace: ", worx$name, ". ",
+                   "Analysis: ", ana$name, ". ",
+                   "Auto-publish: ", auto_publish, "."))
+  }
 
   return(invisible(get_options()))
 }

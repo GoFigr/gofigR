@@ -24,8 +24,10 @@ enable(
 )
 }
 \arguments{
-\item{auto_publish}{will publish all plots automatically if TRUE. Note
-that setting this option will re-assign plot() and print() in the global environment.}
+\item{auto_publish}{will publish all plots automatically if TRUE. In a
+Jupyter notebook (IRkernel) this hooks the kernel's display, so every plot
+a cell shows is published. Elsewhere it re-assigns print() in the global
+environment, which is unreliable and deprecated: prefer explicit publish().}
 
 \item{analysis_api_id}{Analysis API ID (if analysis_name is NULL)}
 
