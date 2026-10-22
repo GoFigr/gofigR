@@ -37,6 +37,7 @@ JUPYTER_PLOT_CLASSES <- c("ggplot", "gg", "ggsurvplot", "gtable", "grob", "trell
 jupyter_state <- new.env(parent = emptyenv())
 jupyter_state$hooks_installed <- FALSE
 jupyter_state$publishing <- FALSE
+jupyter_state$seen_recording <- NULL
 
 #' Sends a raw mime bundle to the Jupyter frontend. IRkernel installs the
 #' base display function as an option; IRdisplay is a thin wrapper over it.
@@ -93,9 +94,29 @@ find_jupyter_executor <- function() {
 #' @return list(width, height) in inches and dpi
 #' @noRd
 jupyter_plot_dims <- function(plotobj = NULL) {
+  # The kernel renders at repr.plot.res; the .irkernel_ppi attribute is that
+  # divided by jupyter.plot_scale (CSS pixels for the frontend), not a dpi.
   list(width = default_if_null(attr(plotobj, ".irkernel_width"), getOption("repr.plot.width", 7)),
        height = default_if_null(attr(plotobj, ".irkernel_height"), getOption("repr.plot.height", 7)),
-       dpi = default_if_null(attr(plotobj, ".irkernel_ppi"), getOption("repr.plot.res", 120)))
+       dpi = getOption("repr.plot.res", 120))
+}
+
+#' The title of a recorded base-graphics plot: the `main` of its last
+#' title() call in the display list (what repr shows as the text/plain).
+#'
+#' @param recording a recordedplot
+#' @return the title, or NULL
+#' @noRd
+recordedplot_title <- function(recording) {
+  calls <- tryCatch(recording[[1]], error = function(e) NULL)
+  for (call in rev(calls)) {
+    args <- tryCatch(call[[2]], error = function(e) NULL)
+    if (isTRUE(try(args[[1]]$name == "C_title", silent = TRUE)) && length(args) >= 2 && !is.null(args[[2]])) {
+      title <- args[[2]]
+      if (is.character(title) && length(title) == 1 && nzchar(title)) return(title)
+    }
+  }
+  NULL
 }
 
 is_jupyter_plot <- function(obj) {
@@ -129,7 +150,8 @@ jupyter_auto_publish <- function(obj, dims) {
       obj <- with_isolated_devices(
         ggplotify::as.ggplot(ggplotify::base2grob(function() grDevices::replayPlot(recording)))
       )
-      publish(obj, width = dims$width, height = dims$height, units = "in", dpi = dims$dpi,
+      publish(obj, figure_name = recordedplot_title(recording),
+              width = dims$width, height = dims$height, units = "in", dpi = dims$dpi,
               base_convert = FALSE)
     } else {
       publish(obj, width = dims$width, height = dims$height, units = "in", dpi = dims$dpi)
@@ -179,7 +201,20 @@ install_jupyter_hooks <- function(executor = find_jupyter_executor()) {
   }, envir = env)
 
   assign("handle_value", function(obj, visible) {
-    if (visible && jupyter_auto_publish(obj, jupyter_plot_dims())) {
+    # evaluate() captures the expression's plot BEFORE handing us its value,
+    # so an invisible plot object paired with a recording that was not
+    # there at the previous value is a print(p): publish the object (exact
+    # re-rendering, RDS of the plot) and drop the recording, which the
+    # kernel would otherwise send at the end of the cell. An assignment
+    # `p <- ggplot(...)` is invisible too, but draws nothing.
+    recording <- get0("last_recorded_plot", envir = env, inherits = FALSE)
+    printed <- !visible && !is.null(recording) && !identical(recording, jupyter_state$seen_recording)
+    jupyter_state$seen_recording <- recording
+    if ((visible || printed) && jupyter_auto_publish(obj, jupyter_plot_dims(recording))) {
+      if (printed) {
+        assign("last_recorded_plot", NULL, envir = env)
+        jupyter_state$seen_recording <- NULL
+      }
       # The original also records .Last.value; keep that behaviour.
       if (requireNamespace("IRkernel", quietly = TRUE)) {
         set_last <- get0("set_last_value", envir = asNamespace("IRkernel"), inherits = FALSE)

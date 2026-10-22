@@ -15,6 +15,7 @@ with_jupyter_options <- function(auto_publish, code) {
     set_options(old)
     jupyter_state$hooks_installed <- FALSE
     jupyter_state$publishing <- FALSE
+    jupyter_state$seen_recording <- NULL
     intercept_off()
   })
   set_options(local({
@@ -55,6 +56,48 @@ test_that("install_jupyter_hooks publishes visible plot objects and defers the r
   })
 })
 
+test_that("a print(p) publishes the object and drops the kernel's recording", {
+  with_jupyter_options(TRUE, {
+    published <- list()
+    local_mocked_bindings(publish = function(plot_obj, ...) {
+      published <<- append(published, list(plot_obj))
+      invisible(NULL)
+    })
+    ex <- fake_executor()
+    install_jupyter_hooks(ex)
+    p <- ggplot2::ggplot()
+
+    # hist(): a recording appears, the value (NULL) is not a plot.
+    ex$last_recorded_plot <- fake_recordedplot()
+    ex$handle_value(NULL, visible = FALSE)
+    # p <- ggplot(): invisible plot object, but no NEW recording -> no publish.
+    ex$handle_value(p, visible = FALSE)
+    expect_length(published, 0)
+    expect_false(is.null(ex$last_recorded_plot))
+
+    # print(p): a new recording accompanies the invisible object.
+    rec <- fake_recordedplot()
+    attr(rec, "n") <- 2
+    ex$last_recorded_plot <- rec
+    ex$handle_value(p, visible = FALSE)
+    expect_length(published, 1)
+    expect_identical(published[[1]], p)
+    expect_null(ex$last_recorded_plot)
+    expect_equal(sapply(ex$calls, `[[`, "what"), c("handle_value", "handle_value"))
+  })
+})
+
+test_that("recordedplot_title reads the last title() call", {
+  rec <- structure(list(list(
+    list(NULL, list(list(name = "C_plot_new"))),
+    list(NULL, list(list(name = "C_title"), "Auto R base", NULL))
+  )), class = "recordedplot")
+  expect_equal(recordedplot_title(rec), "Auto R base")
+  expect_null(recordedplot_title(fake_recordedplot()))
+  untitled <- structure(list(list(list(NULL, list(list(name = "C_title"), NULL)))), class = "recordedplot")
+  expect_null(recordedplot_title(untitled))
+})
+
 test_that("install_jupyter_hooks publishes completed base graphics at the kernel's size", {
   with_jupyter_options(TRUE, {
     published <- list()
@@ -77,7 +120,7 @@ test_that("install_jupyter_hooks publishes completed base graphics at the kernel
     expect_s3_class(published[[1]]$obj, "ggplot")
     expect_equal(published[[1]]$args$width, 5)
     expect_equal(published[[1]]$args$height, 4)
-    expect_equal(published[[1]]$args$dpi, 96)
+    expect_equal(published[[1]]$args$dpi, getOption("repr.plot.res", 120))
     expect_false(published[[1]]$args$base_convert)
     expect_length(ex$calls, 0)
   })
