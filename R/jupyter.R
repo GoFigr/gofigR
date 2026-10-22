@@ -122,10 +122,13 @@ jupyter_auto_publish <- function(obj, dims) {
 
   tryCatch({
     if (inherits(obj, "recordedplot")) {
-      # Base graphics: replay the recorded plot into a grob. Skips
-      # publish()'s base2grob step, which only knows how to run an
-      # expression, not replay a recording.
-      obj <- ggplotify::as.ggplot(obj)
+      # Base graphics: replay the recording into a grob (gridGraphics echoes
+      # what the function draws). Skips publish()'s own base2grob step,
+      # which would evaluate the recordedplot object without drawing it.
+      recording <- obj
+      obj <- with_isolated_devices(
+        ggplotify::as.ggplot(ggplotify::base2grob(function() grDevices::replayPlot(recording)))
+      )
       publish(obj, width = dims$width, height = dims$height, units = "in", dpi = dims$dpi,
               base_convert = FALSE)
     } else {

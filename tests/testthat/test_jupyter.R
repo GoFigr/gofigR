@@ -64,7 +64,11 @@ test_that("install_jupyter_hooks publishes completed base graphics at the kernel
         invisible(NULL)
       }
     )
-    local_mocked_bindings(as.ggplot = function(x) structure(list(replayed = x), class = "ggplot"), .package = "ggplotify")
+    local_mocked_bindings(
+      base2grob = function(fn) structure(list(draw = fn), class = "grob"),
+      as.ggplot = function(x) structure(list(replayed = x), class = "ggplot"),
+      .package = "ggplotify"
+    )
     ex <- fake_executor()
     install_jupyter_hooks(ex)
 
