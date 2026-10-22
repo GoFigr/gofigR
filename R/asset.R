@@ -207,3 +207,65 @@ asset_linked_to_figure <- function(figure_revision, asset_revision,
               use_type=use_type))
 }
 
+
+
+#' Materializes a GoFigr asset revision as a local file and registers it as
+#' an input of every figure published afterwards: the asset-first counterpart
+#' of sync_file(). Nothing is re-hashed or re-uploaded; the revision is
+#' already known, so the provenance link is exact.
+#'
+#' The file is written under `directory` (default ./data) with the name it was
+#' uploaded with, or at `path` if given. A file already there with the
+#' revision's blake3 digest is reused without downloading. The digest of what
+#' was written is verified against the server's.
+#'
+#' @param revision asset revision object or API ID
+#' @param path where to write the file (default: <directory>/<original file name>)
+#' @param directory directory for the default path (created if missing)
+#' @param quiet suppress the "Asset in use" message
+#'
+#' @returns path to the local file
+#' @export
+use_asset <- function(revision, path=NULL, directory="data", quiet=FALSE) {
+  if(!check_configured(response=stop)) {
+    stop("GoFigr is not configured. Call gofigR::enable() first.")
+  }
+  opts <- get_options()
+  gf <- opts$client
+  rev <- if(is.character(revision)) get_asset_revision(gf, revision) else revision
+  if(is.null(rev$data) || length(rev$data) == 0) {
+    rev <- get_asset_revision(gf, get_api_id(rev))
+  }
+  if(length(rev$data) == 0) {
+    stop(paste0("Asset revision ", rev$api_id, " has no file data."))
+  }
+  datum <- rev$data[[1]]
+  file_name <- if(!is.null(datum$name) && nzchar(datum$name)) datum$name else paste0("asset-", rev$api_id)
+  target <- if(is.null(path)) file.path(directory, file_name) else path
+  target_dir <- dirname(target)
+  if(nzchar(target_dir) && !dir.exists(target_dir)) {
+    dir.create(target_dir, recursive=TRUE)
+  }
+
+  expected <- datum$hash
+  if(file.exists(target) && !is.null(expected) && identical(calc_checksum(target), expected)) {
+    message(paste0("Using cached ", target, " for asset revision ", rev$api_id))
+  } else {
+    full <- get_data(gf, datum$api_id)
+    bytes <- if(is.null(full$data) || !nzchar(full$data)) raw(0) else base64enc::base64decode(full$data)
+    writeBin(bytes, target)
+    actual <- calc_checksum(target)
+    if(!is.null(expected) && !identical(actual, expected)) {
+      unlink(target)
+      stop(paste0("Downloaded data for asset revision ", rev$api_id, " did not match its digest (",
+                  actual, " != ", expected, ")."))
+    }
+  }
+
+  opts$assets[[get_api_id(rev)]] <- rev
+  if(!quiet) {
+    asset_url <- paste0(get_app_url(gf), "/asset_revision/", rev$api_id)
+    gf_print_url(asset_url, paste0("Asset in use: ", asset_url))
+  }
+  return(target)
+}
